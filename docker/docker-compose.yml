@@ -1,0 +1,12 @@
+version: '3'
+services:
+  host:
+    image: ${DOCKER_REGISTRY}/${DOCKER_REPO_NAME}:host
+    build:
+      context: ./
+      target: host
+  runner:
+    image: ${DOCKER_REGISTRY}/${DOCKER_REPO_NAME}:runner
+    build:
+      context: ./
+      target: runner
