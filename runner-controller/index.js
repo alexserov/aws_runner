@@ -94,14 +94,17 @@ function main() {
         res.set(200).send();
         server.close();
     });
-    app.get('/removeToken', async (req, res)=> {
+    app.get('/removeToken', async (req, res) => {
         const result = await getRemoveToken();
         res.set(201).send(result);
+    });
+    app.get('/listImages', async (req, res)=> {
+        res.set(200).send(JSON.stringify(containers));
     })
     process.on('SIGTERM', async () => {
         await destroyRunners();
         server.close();
-    })
+    });
     server = app.listen(S_PORT, startWorkers());
 }
 
