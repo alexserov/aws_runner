@@ -8,9 +8,11 @@ function SetResourceName($resourceId, $resourceName) {
 }
 
 # Cleanup
-# Stages:
-# 1 List all internet gateways, if it has 'dx-info':'devextreme-ga' tag, detach it from vpc and then remove
-# 2 List all VPCs, remove if it has 'dx-info':'devextreme-ga' tag
+# Stages (all points below applies to resources with the 'dx-info':'devextreme-ga' tag):
+# --> 1 List all internet gateways, detach it from vpc and then remove
+# --> 2 Remove subnets
+# --> 3 Remove security groups
+# --> 4 Remove VPCs
 
 Write-Output "Removing Internet gateway"
 foreach ($current in (ConvertFrom-Json(@(aws ec2 describe-internet-gateways --filter "Name=tag:dx-info,Values=devextreme-ga") -join "")).InternetGateways) { 
