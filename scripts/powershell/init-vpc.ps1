@@ -12,33 +12,30 @@ function SetResourceName($resourceId, $resourceName) {
 # 1 List all internet gateways, if it has 'dx-info':'devextreme-ga' tag, detach it from vpc and then remove
 # 2 List all VPCs, remove if it has 'dx-info':'devextreme-ga' tag
 
-foreach ($currVpc in (ConvertFrom-Json(@(aws ec2 describe-internet-gateways) -join "")).InternetGateways) {
-    $tag = $currVpc.Tags | Where-Object { $_.Key -eq "dx-info" };
-    if($tag -and $tag.Value -eq "devextreme-ga"){
-        if($currVpc.Attachments){
-            foreach ($att in $currVpc.Attachments) {
-                aws ec2 detach-internet-gateway `
-                    --internet-gateway-id $currVpc.InternetGatewayId `
-                    --vpc-id $att.VpcId
-            }
+foreach ($current in (ConvertFrom-Json(@(aws ec2 describe-internet-gateways --filter "Name=tag:dx-info,Values=devextreme-ga") -join "")).InternetGateways) { 
+    if($current.Attachments){
+        foreach ($att in $current.Attachments) {
+            aws ec2 detach-internet-gateway `
+                --internet-gateway-id $current.InternetGatewayId `
+                --vpc-id $att.VpcId
         }
-        aws ec2 delete-internet-gateway --internet-gateway-id $currVpc.InternetGatewayId
     }
+    aws ec2 delete-internet-gateway --internet-gateway-id $current.InternetGatewayId
 }
-foreach ($currVpc in (ConvertFrom-Json(@(aws ec2 describe-vpcs) -join "")).Vpcs) {
-    $tag = $currVpc.Tags | Where-Object { $_.Key -eq "dx-info" };
-    if($tag -and $tag.Value -eq "devextreme-ga"){
-        aws ec2 delete-vpc --vpc-id $currVpc.VpcId
-    }
+foreach ($current in (ConvertFrom-Json(@(aws ec2 describe-subnets --filter "Name=tag:dx-info,Values=devextreme-ga") -join "")).Vpcs) {
+    aws ec2 delete-subnet --vpc-id $current.SubnetId
+}
+foreach ($current in (ConvertFrom-Json(@(aws ec2 describe-vpcs --filter "Name=tag:dx-info,Values=devextreme-ga") -join "")).Vpcs) {
+    aws ec2 delete-vpc --vpc-id $current.VpcId
 }
 
 # https://eu-central-1.console.aws.amazon.com/vpc/home
 $vpcInfo = aws ec2 create-vpc `
     --cidr-block 10.0.0.0/16
 
-$vpcInfo = ConvertFrom-Json($vpcInfo -join "")
+$vpcId = (ConvertFrom-Json($vpcInfo -join "")).Vpc.VpcId
 
-SetResourceName $vpcInfo.Vpc.VpcId "devextreme-ga-vpc-0"
+SetResourceName $vpcId "devextreme-ga-vpc-0"
 
 # https://eu-central-1.console.aws.amazon.com/vpc/home#igws:
 $gatewayId = (ConvertFrom-Json(@(
@@ -49,4 +46,12 @@ SetResourceName $gatewayId "devextreme-ga-gateway-0"
 
 aws ec2 attach-internet-gateway `
     --internet-gateway-id $gatewayId `
-    --vpc-id $vpcInfo.Vpc.VpcId
+    --vpc-id $vpcId
+
+$subnetInfo = (ConvertFrom-Json(@(
+    aws ec2 create-subnet `
+        --vpc-id $vpcId `
+        --cidr-block 10.0.1.0/16
+) -join "")).Subnet
+
+SetResourceName $subnetInfo.SubnetId "devextreme-ga-subnet-0"

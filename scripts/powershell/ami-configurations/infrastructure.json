@@ -1,0 +1,24 @@
+{
+    "name": "devextreme-ga-infrastructure-config",
+    "description": "Infrastructure config for DevExtreme Github Actions runner host",
+    "instanceTypes": [
+        "m5.large"
+    ],
+    "instanceProfileName": "EC2InstanceProfileForImageBuilder",
+    "securityGroupIds": [
+        ""
+    ],
+    "subnetId": "",
+    "logging": {
+        "s3Logs": {
+            "s3BucketName": "devextreme-ga-infrastructure-config",
+            "s3KeyPrefix": "dxga"
+        }
+    },
+    "keyPair": "",
+    "terminateInstanceOnFailure": true,
+    "tags": {
+        "Name": "devextreme-ga-infrastructure-config",
+        "dx-info": "devextreme-ga"
+    }
+}
