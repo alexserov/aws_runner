@@ -1,45 +1,32 @@
 {
-    "name": "",
-    "description": "",
-    "semanticVersion": "",
+    "name": "devextreme-ga-recipe",
+    "description": "Recipe for devextreme github actions runner host",
     "components": [
-        {
-            "componentArn": "",
-            "parameters": [
-                {
-                    "name": "",
-                    "value": [
-                        ""
-                    ]
-                }
-            ]
-        }
+        { "componentArn": "arn:aws:imagebuilder:eu-central-1:aws:component/docker-ce-ubuntu/1.0.0/1" },
+        { "componentArn": "arn:aws:imagebuilder:eu-central-1:aws:component/nodejs-12-lts-linux/1.0.1/1" }
     ],
-    "parentImage": "",
+    "parentImage": "arn:aws:imagebuilder:eu-central-1:aws:image/ubuntu-server-20-lts-x86/x.x.x",
     "blockDeviceMappings": [
         {
-            "deviceName": "",
+            "deviceName": "/dev/sda1",
             "ebs": {
-                "encrypted": true,
+                "encrypted": false,
                 "deleteOnTermination": true,
-                "iops": 0,
-                "kmsKeyId": "",
+                "iops": 100,
                 "snapshotId": "",
-                "volumeSize": 0,
-                "volumeType": "io2"
-            },
-            "virtualName": "",
-            "noDevice": ""
+                "volumeSize": 8,
+                "volumeType": "gp2"
+            }
         }
     ],
     "tags": {
-        "KeyName": ""
+        "Name": "devextreme-ga-recipe",
+        "dx-info": "devextreme-ga"
     },
-    "workingDirectory": "",
+    "workingDirectory": "/tmp",
     "additionalInstanceConfiguration": {
         "systemsManagerAgent": {
-            "uninstallAfterBuild": true
-        },
-        "userDataOverride": ""
+            "uninstallAfterBuild": false
+        }
     }
 }

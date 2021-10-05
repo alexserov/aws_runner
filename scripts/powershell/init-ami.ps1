@@ -25,13 +25,12 @@ $imageConfigArn = (ConvertFrom-Json(@(
 
 $imageRecipeArn = (ConvertFrom-Json(@(
     aws imagebuilder create-infrastructure-configuration `
-        --cli-input-json file://ami-configurations/infrastructure.json `
-        --subnet-id $subnetId `
-        --security-group-ids @(($securityGroups | ForEach-Object {$_.GroupId}) -join ' ') `
-) -join "")).infrastructureConfigurationArn;
+        --cli-input-json file://ami-configurations/image-recipe.json `
+        --semantic-version @(Get-Date -Format "yyyy.MM.dd")
+) -join "")).imageRecipeArn;
 
 aws imagebuilder create-image-pipeline `
     --cli-input-json file://ami-configurations/image-pipeline.json `
     --infrastructure-configuration-arn = $imageConfigArn `
-    --imageRecipeArn
+    --image-recipe-arn $imageRecipeArn
 

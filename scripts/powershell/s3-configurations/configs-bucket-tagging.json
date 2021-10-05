@@ -1,0 +1,12 @@
+{
+   "TagSet": [
+     {
+       "Key": "Name",
+       "Value": "devextreme-ga-configs"
+     },
+     {
+       "Key": "dx-info",
+       "Value": "devextreme-ga"
+     }
+   ]
+}

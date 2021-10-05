@@ -1,0 +1,8 @@
+{   
+    "ACL": "private",
+    "Bucket": "devextreme-ga-configs",
+    "CreateBucketConfiguration": {        
+        "LocationConstraint": "eu-central-1"
+    },
+    "ObjectLockEnabledForBucket": true
+}
