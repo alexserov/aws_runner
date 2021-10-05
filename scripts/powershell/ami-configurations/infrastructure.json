@@ -5,17 +5,12 @@
         "m5.large"
     ],
     "instanceProfileName": "EC2InstanceProfileForImageBuilder",
-    "securityGroupIds": [
-        ""
-    ],
-    "subnetId": "",
     "logging": {
         "s3Logs": {
             "s3BucketName": "devextreme-ga-infrastructure-config",
             "s3KeyPrefix": "dxga"
         }
     },
-    "keyPair": "",
     "terminateInstanceOnFailure": true,
     "tags": {
         "Name": "devextreme-ga-infrastructure-config",
