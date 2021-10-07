@@ -13,7 +13,6 @@
                 "encrypted": false,
                 "deleteOnTermination": true,
                 "iops": 100,
-                "snapshotId": "",
                 "volumeSize": 8,
                 "volumeType": "gp2"
             }

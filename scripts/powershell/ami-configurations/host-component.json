@@ -1,0 +1,14 @@
+{
+    "name": "devextreme-ga-host-component",
+    "description": "Initialization routines for GA runner host machines",
+    "changeDescription": "Initial version",
+    "platform": "Linux",
+    "supportedOsVersions": [
+        "Ubuntu 20"
+    ],
+    "uri": "s3://devextreme-ga-configs/host-component.yaml",
+    "tags": {
+        "Name": "devextreme-ga-host-component",
+        "dx-info": "devextreme-ga"
+    } 
+}
