@@ -88,7 +88,7 @@ async function Cleanup() {
 }
 
 async function Initialize() {
-    console.log('AMI Initialization');
+    console.log('VPC Initialization');
     async function SetResourceName(client, resourceId, resourceName) {
         await client.send(new CreateTagsCommand({
             Resources: [resourceId],
