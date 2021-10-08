@@ -15,7 +15,14 @@ const {
     AttachInternetGatewayCommand,
     CreateSubnetCommand,
     CreateSecurityGroupCommand,
-    AuthorizeSecurityGroupEgressCommand
+    AuthorizeSecurityGroupEgressCommand,
+    AuthorizeSecurityGroupIngressCommand,
+    CreateRouteTableCommand,
+    CreateRouteCommand,
+    DescribeRouteTablesCommand,
+    DeleteRouteCommand,
+    DeleteRouteTableCommand,
+    AssociateRouteTableCommand
 } = require('@aws-sdk/client-ec2');
 const {
     constants: globalConstants
@@ -26,7 +33,8 @@ const constants = {
         gateway: 'devextreme-ga-gateway-0',
         subnet: 'devextreme-ga-subnet-0',
         securityGroup: 'devextreme-ga-security-group',
-        vpc: 'devextreme-ga-vpc-0'
+        vpc: 'devextreme-ga-vpc-0',
+        routeTable: 'devextreme-ga-routeTable-0'
     }
 };
 
@@ -45,6 +53,24 @@ async function Cleanup() {
             { Name: `tag:${globalConstants.tagName}`, Values: [globalConstants.tagValue] }
         ]
     };
+
+    console.log('\tRemoving Route tables');
+    const describeRouteTablesResponse = await client.send(new DescribeRouteTablesCommand(filterSettings));
+    describeRouteTablesResponse.RouteTables?.forEach(async x => {
+        x.Routes.forEach(async r => {
+            try {
+                await client.send(new DeleteRouteCommand({
+                RouteTableId: x.RouteTableId,
+                DestinationCidrBlock: r.DestinationCidrBlock
+            }));
+            } catch {
+                
+            }
+        });
+        await client.send(new DeleteRouteTableCommand({
+            RouteTableId: x.RouteTableId
+        }));
+    });
 
     console.log('\tRemoving Internet gateway');
     const describeGatewaysResponse = await client.send(new DescribeInternetGatewaysCommand(filterSettings));
@@ -123,7 +149,7 @@ async function Initialize() {
     console.log('\tCreating subnet');
     const createSubnetResponse = await client.send(new CreateSubnetCommand({
         VpcId: vpcId,
-        CidrBlock: '10.0.1.0/16'
+        CidrBlock: '10.0.0.0/24'
     }))
     SetResourceName(client, createSubnetResponse.Subnet.SubnetId, constants.names.subnet)
 
@@ -137,7 +163,7 @@ async function Initialize() {
     const securityGroupId = createSecurityGroupResponse.GroupId;
     SetResourceName(client, securityGroupId, constants.names.securityGroup)
 
-    await client.send(new AuthorizeSecurityGroupEgressCommand({
+    await client.send(new AuthorizeSecurityGroupIngressCommand({
         GroupId: securityGroupId,
         IpPermissions: [
             {
@@ -149,6 +175,22 @@ async function Initialize() {
                 ]
             }
         ]
+    }));
+
+    const createRouteTableResponse = await client.send(new CreateRouteTableCommand({
+        VpcId: vpcId,
+    }));
+    await SetResourceName(client, createRouteTableResponse.RouteTable.RouteTableId, constants.names.routeTable);
+
+    const createRouteResponse = await client.send(new CreateRouteCommand({
+        RouteTableId: createRouteTableResponse.RouteTable.RouteTableId,
+        DestinationCidrBlock: '0.0.0.0/0',
+        GatewayId: internetGatewayId
+    }));
+
+    const associateRouteTableResponse = await client.send(new AssociateRouteTableCommand({
+        SubnetId: createSubnetResponse.Subnet.SubnetId,
+        RouteTableId: createRouteTableResponse.RouteTable.RouteTableId
     }));
 }
 
