@@ -84,15 +84,15 @@ async function Initialize() {
         }));
     }
     const client = new ImagebuilderClient();
-    const ec2Client = new EC2Client();    
-
-    const today = new Date().toLocaleDateString('en', { year: 'numeric', day: '2-digit', month: '2-digit' }).replace(/[^\d]/g, '.');
+    const ec2Client = new EC2Client();
+    
+    const todayValue = new Date();
+    const today = `${todayValue.getFullYear()}.${('0'+todayValue.getMonth()).slice(-2)}.${('0'+todayValue.getDate()).slice(-2)}`;
 
 // ################################
     console.log('Create infrastructure config');
 // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/infraConfigurations
 // ################################
-    client.send()
     const ec2FilterSettings = {
         Filters: [
             { Name: 'tag:dx-info', Values: ['devextreme-ga'] }
@@ -136,10 +136,10 @@ async function Initialize() {
         supportedOsVersions: [
             'Ubuntu 20'
         ],
-        data: readFileSync(path.join(__dirname, 'data/host-component.yaml')),
+        data: readFileSync(path.join(__dirname, 'data/host-component.yaml')).toString(),
         semanticVersion: today
     }));
-    TagResource(client, component.infrastructureConfigurationArn, 'devextreme-ga-host-component');
+    await TagResource(client, component.componentBuildVersionArn, 'devextreme-ga-host-component');
 
 // ################################
     console.log('Create image recipe');
@@ -174,7 +174,7 @@ async function Initialize() {
             }
         }
     }));
-    TagResource(client, imageRecipe.imageRecipeArn, 'devextreme-ga-recipe');
+    await TagResource(client, imageRecipe.imageRecipeArn, 'devextreme-ga-recipe');
 
 // ################################
     console.log('Create image pipeline')
@@ -188,7 +188,7 @@ async function Initialize() {
         imageRecipeArn: imageRecipe.imageRecipeArn,
         status: 'ENABLED',
     }));
-    TagResource(client, imagePipeline.imagePipelineArn, 'devextreme-ga-recipe');
+    await TagResource(client, imagePipeline.imagePipelineArn, 'devextreme-ga-recipe');
 }
 
 module.exports = {
