@@ -17,8 +17,21 @@ const {
     CreateSecurityGroupCommand,
     AuthorizeSecurityGroupEgressCommand
 } = require('@aws-sdk/client-ec2');
+const {
+    constants: globalConstants
+} = require('./global');
+
+const constants = {
+    names: {
+        gateway: 'devextreme-ga-gateway-0',
+        subnet: 'devextreme-ga-subnet-0',
+        securityGroup: 'devextreme-ga-security-group',
+        vpc: 'devextreme-ga-vpc-0'
+    }
+};
 
 async function Cleanup() {
+    console.log('VPC Cleanup');
     const client = new EC2Client();
     // # Cleanup
     // # Stages (all points below applies to resources with the 'dx-info':'devextreme-ga' tag):
@@ -29,11 +42,11 @@ async function Cleanup() {
     
     const filterSettings = {
         Filters: [
-            { Name: 'tag:dx-info', Values: ['devextreme-ga'] }
+            { Name: `tag:${globalConstants.tagName}`, Values: [globalConstants.tagValue] }
         ]
     };
 
-    console.log('Removing Internet gateway');
+    console.log('\tRemoving Internet gateway');
     const describeGatewaysResponse = await client.send(new DescribeInternetGatewaysCommand(filterSettings));
     describeGatewaysResponse.InternetGateways?.forEach(async x => {
         if (x.Attachments) {
@@ -49,7 +62,7 @@ async function Cleanup() {
         }));
     });
 
-    console.log('Removing subnets');
+    console.log('\tRemoving subnets');
     const describeSubnetsResponse = await client.send(new DescribeSubnetsCommand(filterSettings));
     describeSubnetsResponse.Subnets?.forEach(async x => {
         await client.send(new DeleteSubnetCommand({
@@ -57,7 +70,7 @@ async function Cleanup() {
         }));
     });
 
-    console.log('Removing security groups');
+    console.log('\tRemoving security groups');
     const describeGroupsResponse = await client.send(new DescribeSecurityGroupsCommand(filterSettings));
     describeGroupsResponse.SecurityGroups?.forEach(async x => {
         await client.send(new DeleteSecurityGroupCommand({
@@ -65,7 +78,7 @@ async function Cleanup() {
         }));
     });
 
-    console.log('Removing VPCs');
+    console.log('\tRemoving VPCs');
     const describeVpcsResponse = await client.send(new DescribeVpcsCommand(filterSettings));
     describeVpcsResponse.Vpcs?.forEach(async x => {
         await client.send(new DeleteVpcCommand({
@@ -75,53 +88,54 @@ async function Cleanup() {
 }
 
 async function Initialize() {
+    console.log('AMI Initialization');
     async function SetResourceName(client, resourceId, resourceName) {
         await client.send(new CreateTagsCommand({
             Resources: [resourceId],
             Tags: [
                 { Key: 'Name', Value: resourceName },
-                { Key: 'dx-info', Value: 'devextreme-ga' }
+                { Key: globalConstants.tagName, Value: globalConstants.tagValue }
             ]
         }));
     }
 
     const client = new EC2Client();
     // # https://eu-central-1.console.aws.amazon.com/vpc/home
-    console.log('Creating VPC')
+    console.log('\tCreating VPC')
     const createVpcResponse = await client.send(new CreateVpcCommand({
         CidrBlock: '10.0.0.0/16'
     }));
 
     const vpcId = createVpcResponse.Vpc.VpcId;
-    await SetResourceName(client, vpcId, 'devextreme-ga-vpc-0');
+    await SetResourceName(client, vpcId, constants.names.vpc);
 
     // # https://eu-central-1.console.aws.amazon.com/vpc/home#igws:
-    console.log('Creating Interntet gateway');
+    console.log('\tCreating Interntet gateway');
     const createInternetGatewayResponse = await client.send(new CreateInternetGatewayCommand({}));
     const internetGatewayId = createInternetGatewayResponse.InternetGateway.InternetGatewayId;
-    await SetResourceName(client, internetGatewayId, 'devextreme-ga-gateway-0');
+    await SetResourceName(client, internetGatewayId, constants.names.gateway);
 
     await client.send(new AttachInternetGatewayCommand({
         InternetGatewayId: internetGatewayId,
         VpcId: vpcId
     }));
     // # https://eu-central-1.console.aws.amazon.com/vpc/home#subnets:
-    console.log('Creating subnet');
+    console.log('\tCreating subnet');
     const createSubnetResponse = await client.send(new CreateSubnetCommand({
         VpcId: vpcId,
         CidrBlock: '10.0.1.0/16'
     }))
-    SetResourceName(client, createSubnetResponse.Subnet.SubnetId, 'devextreme-ga-subnet-0')
+    SetResourceName(client, createSubnetResponse.Subnet.SubnetId, constants.names.subnet)
 
     // # https://eu-central-1.console.aws.amazon.com/vpc/home#securityGroups:
-    console.log('Creating security group');
+    console.log('\tCreating security group');
     const createSecurityGroupResponse = await client.send(new CreateSecurityGroupCommand({
-        GroupName: 'devextreme-ga-security-group',
+        GroupName: constants.names.securityGroup,
         Description: 'Security group for devextreme Gitub Actions',
         VpcId: vpcId
     }));
     const securityGroupId = createSecurityGroupResponse.GroupId;
-    SetResourceName(client, securityGroupId, 'devextreme-ga-security-group')
+    SetResourceName(client, securityGroupId, constants.names.securityGroup)
 
     await client.send(new AuthorizeSecurityGroupEgressCommand({
         GroupId: securityGroupId,
@@ -140,5 +154,6 @@ async function Initialize() {
 
 module.exports = {
     Cleanup,
-    Initialize
+    Initialize,
+    constants
 }

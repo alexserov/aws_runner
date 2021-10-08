@@ -7,54 +7,65 @@ const {
     PutBucketTaggingCommand,
     DeleteObjectCommand
 } = require('@aws-sdk/client-s3')
+const {
+    constants: globalConstants
+} = require('./global');
+
+const constants = {
+    names: {
+        bucket: 'devextreme-ga-configs'
+    }
+};
 
 async function Cleanup() {
+    console.log('S3 Cleanup');
     const client = new S3Client();
 
     const buckets = await client.send(new ListBucketsCommand({ }));
-    if (!buckets.Buckets?.map(x => x.Name)?.includes('devextreme-ga-configs'))
+    if (!buckets.Buckets?.map(x => x.Name)?.includes(constants.names.bucket))
         return;
     
     const versions = await client.send(new ListObjectVersionsCommand({
-        Bucket: 'devextreme-ga-configs',
+        Bucket: constants.names.bucket,
     }));
     if (versions.Versions) {
         await Promise.all(versions.Versions.map(x => client.send(new DeleteObjectCommand({
-            Bucket: 'devextreme-ga-configs',
+            Bucket: constants.names.bucket,
             Key: x.Key,
             VersionId: x.VersionId
         }))));
     }
 
     await client.send(new DeleteBucketCommand({
-        Bucket: 'devextreme-ga-configs',
+        Bucket: constants.names.bucket,
     }))
 }
 
 async function Initialize() {
+    console.log('S3 Initialization');
     // # TODO: manage access
     const client = new S3Client();
 
     await client.send(new CreateBucketCommand({
         ACL: 'private',
-        Bucket: 'devextreme-ga-configs',
+        Bucket: constants.names.bucket,
         CreateBucketConfiguration: {
-            LocationConstraint: 'eu-central-1'
+            LocationConstraint: globalConstants.region
         },
         ObjectLockEnabledForBucket: true
     }));
 
     await client.send(new PutBucketTaggingCommand({
-        Bucket: 'devextreme-ga-configs',
+        Bucket: constants.names.bucket,
         Tagging: {
             TagSet: [
                 {
                     Key: 'Name',
-                    Value: 'devextreme-ga-configs'
+                    Value: constants.names.bucket
                 },
                 {
-                    Key: 'dx-info',
-                    Value: 'devextreme-ga'
+                    Key: globalConstants.tagName,
+                    Value: globalConstants.tagValue
                 }
             ]
         }
@@ -63,5 +74,6 @@ async function Initialize() {
 
 module.exports = {
     Cleanup,
-    Initialize
+    Initialize,
+    constants
 }

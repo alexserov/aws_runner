@@ -3,9 +3,9 @@ const s3 = require('./aws/s3');
 const ami = require('./aws/ami');
 
 async function Cleanup() {
-    await vpc.Cleanup();
-    await s3.Cleanup();
     await ami.Cleanup();
+    await s3.Cleanup();
+    await vpc.Cleanup();
 }
 async function Initialize() {
     await vpc.Initialize();
@@ -13,8 +13,8 @@ async function Initialize() {
     await ami.Initialize();
 }
 async function main() {
-    await ami.Cleanup();
-    await ami.Initialize();
+    await Cleanup();
+    await Initialize();
 }
 
 main();
