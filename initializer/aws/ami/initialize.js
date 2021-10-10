@@ -107,7 +107,6 @@ async function InitializeImage(options) {
                 ebs: {
                     encrypted: false,
                     deleteOnTermination: true,
-                    iops: 100,
                     volumeSize: 8,
                     volumeType: 'gp2'
                 }
@@ -116,7 +115,7 @@ async function InitializeImage(options) {
         workingDirectory: '/tmp',
         additionalInstanceConfiguration: {
             systemsManagerAgent: {
-                uninstallAfterBuild: false
+                uninstallAfterBuild: false,
             }
         }
     }));

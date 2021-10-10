@@ -67,6 +67,7 @@ async function Cleanup() {
                 
             }
         });
+        await new Promise(r => setTimeout(5000, r));
         await client.send(new DeleteRouteTableCommand({
             RouteTableId: x.RouteTableId
         }));
