@@ -16,21 +16,26 @@ const {
     constants: globalConstants
 } = require('../global');
 const {
+    constants: vpcConstants
+} = require('../vpc');
+const {
     constants: s3Constants
 } = require('../s3');
 const constants = require('./constants');
 
+async function TagResource(client, resource, name) {
+    await client.send(new TagResourceCommand({
+        resourceArn: resource,
+        tags: {
+            Name: name,
+            [globalConstants.tagName]: globalConstants.tagValue
+        }
+    }));
+}
+
 async function InitializeImage(options) {
     console.log(`AMI Initialization: ${options.suffix}`);
-    async function TagResource(client, resource, name) {
-        await client.send(new TagResourceCommand({
-            resourceArn: resource,
-            tags: {
-                Name: name,
-                [globalConstants.tagName]: globalConstants.tagValue
-            }
-        }));
-    }
+
     const client = new ImagebuilderClient();
     const ec2Client = new EC2Client();
     
@@ -41,15 +46,18 @@ async function InitializeImage(options) {
     console.log('\tCreate infrastructure config');
 // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/infraConfigurations
 // ################################
-    const ec2FilterSettings = {
+    const subnets = (await ec2Client.send(new DescribeSubnetsCommand({
         Filters: [
-            { Name: `tag:${globalConstants.tagName}`, Values: [globalConstants.tagValue] }
+            { Name: 'tag:Name', Values: [vpcConstants.names.build.subnet] }
         ]
-    };
-    const subnets = (await ec2Client.send(new DescribeSubnetsCommand(ec2FilterSettings))).Subnets;
+    }))).Subnets;
     if (!subnets || !subnets.length)
         throw new Error('No subnet found');
-    const securityGroups = (await ec2Client.send(new DescribeSecurityGroupsCommand(ec2FilterSettings))).SecurityGroups;
+    const securityGroups = (await ec2Client.send(new DescribeSecurityGroupsCommand({
+        Filters: [
+            { Name: 'tag:Name', Values: [vpcConstants.names.build.securityGroup] }
+        ]
+    }))).SecurityGroups;
     if (!securityGroups || !securityGroups.length)
         throw new Error('No security groups found');
     
@@ -60,12 +68,12 @@ async function InitializeImage(options) {
         // instanceTypes: [
         //     options.instanceType
         // ],
-        // logging: {
-        //     s3Logs: {
-        //         s3BucketName: s3Constants.names.bucket,
-        //         s3KeyPrefix: 'dxga'
-        //     }
-        // },
+        logging: {
+            s3Logs: {
+                s3BucketName: s3Constants.names.bucket,
+                s3KeyPrefix: 'dxga'
+            }
+        },
         subnetId: subnets[0].SubnetId,
         securityGroupIds: securityGroups.map(x=>x.GroupId),
         terminateInstanceOnFailure: true,
