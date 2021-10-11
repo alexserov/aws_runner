@@ -3,7 +3,8 @@ function DefineImageNames(suffix) {
         infrastructureConfiguration: `devextreme-ga-infrastructure-config-${suffix}`,
         component: `devextreme-ga-host-component-${suffix}`,
         imageRecipe: `devextreme-ga-recipe-${suffix}`,
-        imagePipeline: `devextreme-ga-image-pipeline-${suffix}`
+        imagePipeline: `devextreme-ga-image-pipeline-${suffix}`,
+        distributionConfiguration: `devextreme-ga-distribution-config-${suffix}`,
     }
 }
 module.exports = {

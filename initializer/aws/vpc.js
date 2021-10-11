@@ -22,7 +22,8 @@ const {
     DescribeRouteTablesCommand,
     DeleteRouteCommand,
     DeleteRouteTableCommand,
-    AssociateRouteTableCommand
+    AssociateRouteTableCommand,
+    DisassociateRouteTableCommand
 } = require('@aws-sdk/client-ec2');
 const {
     constants: globalConstants
@@ -55,63 +56,75 @@ async function Cleanup() {
     };
 
     console.log('\tRemoving Route tables');
+
     const describeRouteTablesResponse = await client.send(new DescribeRouteTablesCommand(filterSettings));
-    describeRouteTablesResponse.RouteTables?.forEach(async x => {
-        x.Routes.forEach(async r => {
-            try {
-                await client.send(new DeleteRouteCommand({
+    await Promise.all(describeRouteTablesResponse.RouteTables?.map(async x => {
+        await Promise.all(x.Associations.map(async r => {
+            await client.send(new DisassociateRouteTableCommand({
+                AssociationId: r.RouteTableAssociationId
+            })).catch(() => {
+                //do nothing
+            });
+        }));
+        await Promise.all(x.Routes.map(async r => {
+            await client.send(new DeleteRouteCommand({
                 RouteTableId: x.RouteTableId,
                 DestinationCidrBlock: r.DestinationCidrBlock
-            }));
-            } catch {
-                
-            }
-        });
-        await new Promise(r => setTimeout(5000, r));
+            })).catch(() => {
+                //do nothing
+            });
+        }));
+        await new Promise(r => setTimeout(r, 5000));
         await client.send(new DeleteRouteTableCommand({
             RouteTableId: x.RouteTableId
         }));
-    });
+    }));
 
     console.log('\tRemoving Internet gateway');
     const describeGatewaysResponse = await client.send(new DescribeInternetGatewaysCommand(filterSettings));
-    describeGatewaysResponse.InternetGateways?.forEach(async x => {
+    await Promise.all(describeGatewaysResponse.InternetGateways?.map(async x => {
         if (x.Attachments) {
-            x.Attachments.forEach(async att => {
+            await Promise.all(x.Attachments.map(async att => {
                 await client.send(new DetachInternetGatewayCommand({
                     InternetGatewayId: x.InternetGatewayId,
                     VpcId: att.VpcId
                 }))
-            });
+            }));
         }
         await client.send(new DeleteInternetGatewayCommand({
             InternetGatewayId: x.InternetGatewayId
         }));
-    });
+    }));
 
     console.log('\tRemoving subnets');
     const describeSubnetsResponse = await client.send(new DescribeSubnetsCommand(filterSettings));
-    describeSubnetsResponse.Subnets?.forEach(async x => {
+    await Promise.all(describeSubnetsResponse.Subnets?.map(async x => {
         await client.send(new DeleteSubnetCommand({
             SubnetId: x.SubnetId
         }));
-    });
+    }));
 
     console.log('\tRemoving security groups');
     const describeGroupsResponse = await client.send(new DescribeSecurityGroupsCommand(filterSettings));
-    describeGroupsResponse.SecurityGroups?.forEach(async x => {
+    await Promise.all(describeGroupsResponse.SecurityGroups?.map(async x => {
         await client.send(new DeleteSecurityGroupCommand({
             GroupId: x.GroupId
         }));
-    });
+    }));
 
     console.log('\tRemoving VPCs');
     const describeVpcsResponse = await client.send(new DescribeVpcsCommand(filterSettings));
-    describeVpcsResponse.Vpcs?.forEach(async x => {
-        await client.send(new DeleteVpcCommand({
-            VpcId: x.VpcId
-        }));
-    });
+    await Promise.all(describeVpcsResponse.Vpcs?.map(async x => {
+        for (let i = 0; i < 5; i++) {
+            const deleteVpcResponse = await client.send(new DeleteVpcCommand({
+                VpcId: x.VpcId
+            })).then(x => true).catch(x => false);
+            if (deleteVpcResponse) {
+                return;
+            }
+            await new Promise(r => setTimeout(r, 5000));
+        }
+    }));
 }
 
 async function Initialize() {

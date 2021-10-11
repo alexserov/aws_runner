@@ -9,6 +9,8 @@ const {
     ListInfrastructureConfigurationsCommand,
     DeleteInfrastructureConfigurationCommand,
     ListComponentBuildVersionsCommand,
+    ListDistributionConfigurationsCommand,
+    DeleteDistributionConfigurationCommand,
 } = require('@aws-sdk/client-imagebuilder');
 const {
     constants: globalConstants
@@ -24,25 +26,25 @@ async function Cleanup() {
 // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/pipelines
 // ################################
     const listImagePipelinesResponse = await client.send(new ListImagePipelinesCommand({}));
-    listImagePipelinesResponse.imagePipelineList?.forEach(async x => {
+    await Promise.all(listImagePipelinesResponse.imagePipelineList?.map(async x => {
         if (x.tags && x.tags[globalConstants.tagName] === globalConstants.tagValue) {
             await client.send(new DeleteImagePipelineCommand({
                 imagePipelineArn: x.arn
             }));
         }
-    });
+    }));
 // ################################
     console.log('\tRemoving image recipes');
 // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/imageRecipes
 // ################################
     const listImageRecipesResponse = await client.send(new ListImageRecipesCommand({}));
-    listImageRecipesResponse.imageRecipeSummaryList?.forEach(async x => {
+    await Promise.all(listImageRecipesResponse.imageRecipeSummaryList?.map(async x => {
         if (x.tags && x.tags[globalConstants.tagName] === globalConstants.tagValue) {
             await client.send(new DeleteImageRecipeCommand({
                 imageRecipeArn: x.arn
             }));
        }
-    });
+    }));
 
 // ################################
     console.log('\tRemoving components');
@@ -53,31 +55,42 @@ async function Cleanup() {
         constants.names.host.component,
         constants.names.listener.component
     ];
-    listComponentsResponse.componentVersionList?.forEach(async x => {
+    await Promise.all(listComponentsResponse.componentVersionList?.map(async x => {
         // TODO: list tags commands throws a server error even if tag exists
         if (componentNames.includes(x.name)) {
             const listComponentBuildVersionsResponse = await client.send(new ListComponentBuildVersionsCommand({
                 componentVersionArn: x.arn
             }));
-            listComponentBuildVersionsResponse.componentSummaryList?.forEach(async z => {
+            await Promise.all(listComponentBuildVersionsResponse.componentSummaryList?.map(async z => {
                 await client.send(new DeleteComponentCommand({
                     componentBuildVersionArn: z.arn
                 }));
-            });
+            }));
         }
-    });
+    }));
 // ################################
     console.log('\tRemoving infrastructure configs');
 // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/infraConfigurations
 // ################################
     const listInfrastructureConfigurationsResponse = await client.send(new ListInfrastructureConfigurationsCommand({}));
-    listInfrastructureConfigurationsResponse.infrastructureConfigurationSummaryList?.forEach(async x => {
+    await Promise.all(listInfrastructureConfigurationsResponse.infrastructureConfigurationSummaryList?.map(async x => {
         if (x.tags && x.tags[globalConstants.tagName] === globalConstants.tagValue) {
             await client.send(new DeleteInfrastructureConfigurationCommand({
                 infrastructureConfigurationArn: x.arn
             }));
         }
-    });
+    }));
+    // ################################
+    console.log('\tRemoving distribution configs');
+// ################################
+    const listDistributionConfigurationsResponse = await client.send(new ListDistributionConfigurationsCommand({}));
+    await Promise.all(listDistributionConfigurationsResponse.distributionConfigurationSummaryList?.map(async x => {
+        if (x.tags && x.tags[globalConstants.tagName] === globalConstants.tagValue) {
+            await client.send(new DeleteDistributionConfigurationCommand({
+                distributionConfigurationArn: x.arn
+            }));
+        }
+    }));
 }
 
 module.exports = Cleanup;

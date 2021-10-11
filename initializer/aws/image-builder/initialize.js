@@ -5,6 +5,7 @@ const {
     CreateComponentCommand,
     CreateImageRecipeCommand,
     CreateImagePipelineCommand,
+    CreateDistributionConfigurationCommand,
 } = require('@aws-sdk/client-imagebuilder');
 const {
     EC2Client, DescribeSubnetsCommand, DescribeSecurityGroupsCommand
@@ -55,16 +56,16 @@ async function InitializeImage(options) {
     const infrastructureConfiguration = await client.send(new CreateInfrastructureConfigurationCommand({
         name: options.names.infrastructureConfiguration,
         description: `Infrastructure config for DevExtreme Github Actions runner ${options.suffix}`,
-        instanceTypes: [
-            options.instanceType
-        ],
         instanceProfileName: 'EC2InstanceProfileForImageBuilder',
-        logging: {
-            s3Logs: {
-                s3BucketName: s3Constants.names.bucket,
-                s3KeyPrefix: 'dxga'
-            }
-        },
+        // instanceTypes: [
+        //     options.instanceType
+        // ],
+        // logging: {
+        //     s3Logs: {
+        //         s3BucketName: s3Constants.names.bucket,
+        //         s3KeyPrefix: 'dxga'
+        //     }
+        // },
         subnetId: subnets[0].SubnetId,
         securityGroupIds: securityGroups.map(x=>x.GroupId),
         terminateInstanceOnFailure: true,
@@ -122,6 +123,20 @@ async function InitializeImage(options) {
     await TagResource(client, imageRecipe.imageRecipeArn, options.names.imageRecipe);
 
 // ################################
+    console.log('\tCreate distribution configuration')
+// ################################
+    const createDistributionConfigurationResponse = await client.send(new CreateDistributionConfigurationCommand({
+        name: options.names.distributionConfiguration,
+        distributions: [
+            {
+                region: globalConstants.region,
+                amiDistributionConfiguration: {}
+            }
+        ]
+    }));
+    await TagResource(client, createDistributionConfigurationResponse.distributionConfigurationArn, options.names.distributionConfiguration);
+
+// ################################
     console.log('\tCreate image pipeline')
 // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/pipelines
 // ################################
@@ -131,6 +146,7 @@ async function InitializeImage(options) {
         enhancedImageMetadataEnabled: true,
         infrastructureConfigurationArn: infrastructureConfiguration.infrastructureConfigurationArn,
         imageRecipeArn: imageRecipe.imageRecipeArn,
+        distributionConfigurationArn: createDistributionConfigurationResponse.distributionConfigurationArn,
         status: 'ENABLED',
     }));
     await TagResource(client, imagePipeline.imagePipelineArn, options.names.imagePipeline);

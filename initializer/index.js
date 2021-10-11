@@ -1,6 +1,6 @@
 const vpc = require('./aws/vpc');
 const s3 = require('./aws/s3');
-const ami = require('./aws/ami');
+const ami = require('./aws/image-builder');
 
 async function Cleanup() {
     await ami.Cleanup();
