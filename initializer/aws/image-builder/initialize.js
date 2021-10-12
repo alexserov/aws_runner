@@ -8,7 +8,7 @@ const {
     CreateDistributionConfigurationCommand,
 } = require('@aws-sdk/client-imagebuilder');
 const {
-    EC2Client, DescribeSubnetsCommand, DescribeSecurityGroupsCommand
+    EC2Client, DescribeSubnetsCommand, DescribeSecurityGroupsCommand, DescribeVpcsCommand
 } = require('@aws-sdk/client-ec2')
 const { readFileSync } = require('fs');
 const path = require('path');
@@ -46,20 +46,18 @@ async function InitializeImage(options) {
     console.log('\tCreate infrastructure config');
 // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/infraConfigurations
 // ################################
-    const subnets = (await ec2Client.send(new DescribeSubnetsCommand({
-        Filters: [
-            { Name: 'tag:Name', Values: [vpcConstants.names.build.subnet] }
-        ]
-    }))).Subnets;
-    if (!subnets || !subnets.length)
-        throw new Error('No subnet found');
-    const securityGroups = (await ec2Client.send(new DescribeSecurityGroupsCommand({
-        Filters: [
-            { Name: 'tag:Name', Values: [vpcConstants.names.build.securityGroup] }
-        ]
-    }))).SecurityGroups;
-    if (!securityGroups || !securityGroups.length)
-        throw new Error('No security groups found');
+    
+    const defaultVpc = await ec2Client.send(new DescribeVpcsCommand({})).then(x => (x.Vpcs || []).filter(x => x.IsDefault)[0]?.VpcId);
+    if (!defaultVpc) {
+        throw new Error('No default VPC found');
+    }
+    const subnetId = await ec2Client.send(new DescribeSubnetsCommand({})).then(x => x.Subnets.filter(s => s.VpcId === defaultVpc)[0]?.SubnetId);
+    if (!subnetId)
+        throw new Error('No default subnet found');
+    
+    const securityGroupId = await ec2Client.send(new DescribeSecurityGroupsCommand({})).then(x => x.SecurityGroups.filter(g=>g.VpcId === defaultVpc)[0]?.GroupId);
+    if (!securityGroupId)
+        throw new Error('No default security group found');
     
     const infrastructureConfiguration = await client.send(new CreateInfrastructureConfigurationCommand({
         name: options.names.infrastructureConfiguration,
@@ -74,8 +72,8 @@ async function InitializeImage(options) {
                 s3KeyPrefix: 'dxga'
             }
         },
-        subnetId: subnets[0].SubnetId,
-        securityGroupIds: securityGroups.map(x=>x.GroupId),
+        subnetId: subnetId,
+        securityGroupIds: [securityGroupId],
         terminateInstanceOnFailure: true,
     }));
     await TagResource(client, infrastructureConfiguration.infrastructureConfigurationArn, options.names.infrastructureConfiguration)
