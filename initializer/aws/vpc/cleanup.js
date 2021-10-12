@@ -25,12 +25,6 @@ const {
 async function Cleanup() {
     console.log('VPC Cleanup');
     const client = new EC2Client();
-    // # Cleanup
-    // # Stages (all points below applies to resources with the 'dx-info':'devextreme-ga' tag):
-    // # --> 1 List all internet gateways, detach it from vpc and then remove
-    // # --> 2 Remove subnets
-    // # --> 3 Remove security groups
-    // # --> 4 Remove VPCs
     
     const filterSettings = {
         Filters: [
@@ -44,16 +38,21 @@ async function Cleanup() {
         await client.send(new DeleteVpcEndpointsCommand({
             VpcEndpointIds: [x.VpcEndpointId]
         }));
-        for (let i = 0; i < 12; i++) {
+        return x.VpcEndpointId;
+    })).then(async x => {
+        for (let i = 0; i < 30; i++) {
             const deletionResponse = await client.send(new DescribeVpcEndpointsCommand({
-                VpcEndpointIds: [x.VpcEndpointId]
-            }));
+                VpcEndpointIds: x
+            })).catch(x => {
+                //seems that endpoint was deleted and we got the InvalidVpcEndpointId.NotFound error
+                return {};
+            });
             if (deletionResponse.VpcEndpoints && deletionResponse.VpcEndpoints.length) {
-                await new Promise(r => setTimeout(r, 10000));
-                console.log(`\t\twaiting (${i} of 12`);
+                await new Promise(r => setTimeout(r, 30000));
+                console.log(`\t\twaiting (${i} of 30)`);
             }
         }
-    }));
+    });
 
     console.log('\tRemoving Route tables');
 

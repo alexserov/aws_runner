@@ -12,6 +12,8 @@ const {
     AssociateRouteTableCommand,
     ModifyVpcAttributeCommand,
     CreateVpcEndpointCommand,
+    UpdateSecurityGroupRuleDescriptionsIngressCommand,
+    DescribeVpcEndpointsCommand,
 } = require('@aws-sdk/client-ec2');
 const {
     constants: globalConstants
@@ -35,7 +37,7 @@ async function InitializeVPC(options) {
     // # https://eu-central-1.console.aws.amazon.com/vpc/home
     console.log('\tCreating VPC')
     const createVpcResponse = await client.send(new CreateVpcCommand({
-        CidrBlock: '10.0.0.0/16',
+        CidrBlock: options.cidr,
 
     }));
 
@@ -56,7 +58,7 @@ async function InitializeVPC(options) {
     console.log('\tCreating subnet');
     const createSubnetResponse = await client.send(new CreateSubnetCommand({
         VpcId: vpcId,
-        CidrBlock: '10.0.0.0/24'
+        CidrBlock: options.cidr
     }))
     const subnetId = createSubnetResponse.Subnet.SubnetId;
     SetResourceName(client, subnetId, options.names.subnet)
@@ -112,10 +114,12 @@ async function InitializeVPC(options) {
 }
 async function Initialize() {
     const build = await InitializeVPC({
-        names: constants.names.build
+        names: constants.names.build,
+        cidr: '172.31.0.0/16'
     });
     const run = await InitializeVPC({
-        names: constants.names.run
+        names: constants.names.run,
+        cidr: '10.0.0.0/16'
     });
     //TODO pass client as arg to functions above
     const client = new EC2Client();
@@ -131,15 +135,43 @@ async function Initialize() {
             Value: true
         }
     }));
-    const createVpcEndpointResponse = await client.send(new CreateVpcEndpointCommand({
-        VpcId: build.vpcId,
-        ServiceName: `com.amazonaws.${globalConstants.region}.imagebuilder`,
-        SubnetIds: [build.subnetId],
-        SecurityGroupIds: [build.securityGroupId],
-        PrivateDnsEnabled: true,
-        VpcEndpointType: 'Interface'
+    await client.send(new AuthorizeSecurityGroupIngressCommand({
+        GroupId: build.securityGroupId,
+        IpPermissions: [
+            {
+                IpProtocol: 'tcp',
+                ToPort: 443,
+                FromPort: 443,
+                IpRanges: [
+                    { CidrIp: '0.0.0.0/0' },
+                    { CidrIp: '172.31.0.0/16' }
+                ]
+            }
+        ]
     }));
-    SetResourceName(client, createVpcEndpointResponse.VpcEndpoint.VpcEndpointId, constants.names.build.endpoint);
+    const endpointIds = await Promise.all(constants.endpointSuffixes.map(async service => {
+        const createVpcEndpointResponse = await client.send(new CreateVpcEndpointCommand({
+            VpcId: build.vpcId,
+            ServiceName: `com.amazonaws.${globalConstants.region}.${service}`,
+            SubnetIds: [build.subnetId],
+            SecurityGroupIds: [build.securityGroupId],
+            PrivateDnsEnabled: true,
+            VpcEndpointType: 'Interface',
+        }));
+        const id = createVpcEndpointResponse.VpcEndpoint.VpcEndpointId
+        SetResourceName(client, createVpcEndpointResponse.VpcEndpoint.VpcEndpointId, constants.names.build[`endpoint_${service}`]);
+        return id;
+    }));
+    for (let i = 0; i < 30; i++){
+        const describeVpcEndpointsResponse = await client.send(new DescribeVpcEndpointsCommand({
+            VpcEndpointIds: endpointIds
+        }));
+        const allInitialized = describeVpcEndpointsResponse.VpcEndpoints.every(x => x.State === 'available');
+        if (!allInitialized) {
+            await new Promise(r => setTimeout(r, 30000));
+            console.log(`\t\twaiting for endpoint initialization (${i} of 30)`);
+        }
+    }
 }
 
 module.exports = Initialize;
