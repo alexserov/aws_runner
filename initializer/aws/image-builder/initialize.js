@@ -18,13 +18,10 @@ const { readFileSync } = require('fs');
 const path = require('path');
 
 const globalConstants = require('../global');
-const {
-    constants: vpcConstants
-} = require('../vpc');
-const {
-    constants: s3Constants
-} = require('../s3');
+const { constants: s3Constants } = require('../s3');
 const constants = require('./constants');
+const { constants: iamConstants } = require('../iam');
+
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
 async function TagResource(client, resource, name) {
@@ -66,7 +63,7 @@ async function InitializeImage(options) {
     const infrastructureConfiguration = await client.send(new CreateInfrastructureConfigurationCommand({
         name: options.names.infrastructureConfiguration,
         description: `Infrastructure config for DevExtreme Github Actions runner ${options.suffix}`,
-        instanceProfileName: 'EC2InstanceProfileForImageBuilder',
+        instanceProfileName: iamConstants.names.imagebuilder_profile,
         subnetId: subnetId,
         securityGroupIds: [securityGroupId],
         terminateInstanceOnFailure: true,

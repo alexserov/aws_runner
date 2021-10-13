@@ -1,16 +1,16 @@
 const {
-    IAMClient, CreateRoleCommand, PutRolePolicyCommand,
+    IAMClient, CreateRoleCommand, PutRolePolicyCommand, CreateInstanceProfileCommand, AddRoleToInstanceProfileCommand,
 } = require('@aws-sdk/client-iam');
 const { readdirSync, readFileSync } = require('fs');
 const { join, basename } = require('path');
 const globalConstants = require('../global');
 const constants = require('./constants');
 
-function InitializeRole(client, name, folder) {
-    client.send(new CreateRoleCommand({
-        RoleName: name,
+async function InitializeRole(client, roleName, profileName, folder) {
+    await client.send(new CreateRoleCommand({
+        RoleName: roleName,
         AssumeRolePolicyDocument: readFileSync(join(__dirname, 'data', folder, 'trust-policy.json')).toString(),
-        Tags: globalConstants.getTagsArray(name),
+        Tags: globalConstants.getTagsArray(roleName),
     })).then(async (response) => {
         const role = response.Role;
 
@@ -21,11 +21,21 @@ function InitializeRole(client, name, folder) {
 
             await client.send(new PutRolePolicyCommand({
                 RoleName: role.RoleName,
-                PolicyDocument: readFileSync(join(__dirname, data, folder, `${policyFileName}.json`)).toString(),
+                PolicyDocument: readFileSync(join(__dirname, 'data', folder, `${policyFileName}.json`)).toString(),
                 PolicyName: `devextreme-ga-policy-${policyFileName}`
             }));
         }));
     });
+    await client.send(new CreateInstanceProfileCommand({
+        InstanceProfileName: profileName,
+        Path: '/',
+        Tags: globalConstants.getTagsArray(roleName),
+    }));
+
+    await client.send(new AddRoleToInstanceProfileCommand({
+        InstanceProfileName: profileName,
+        RoleName: roleName
+    }));
 }
 
 async function Initialize() {
@@ -33,7 +43,7 @@ async function Initialize() {
     
     const client = new IAMClient();
 
-    InitializeRole(client, constants.names.imagebuilder_role, 'imagebuilder');
+    await InitializeRole(client, constants.names.imagebuilder_role, constants.names.imagebuilder_profile, 'imagebuilder');
 }
 
 module.exports = Initialize;
