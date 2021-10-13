@@ -8,11 +8,19 @@ const getTagsObject = (name) => {
     const namepart = name ? { Name: name } : {};
     return {
         ...namepart,
-        [globalConstants.tagName]: globalConstants.tagValue
+        [constants_0.tagName]: constants_0.tagValue
     }
+}
+const getTagsArray = (name) => {
+    const namepart = name ? [{ Key: 'Name', Value: name }] : [];
+    return [
+        ...namepart,
+        { Key: constants_0.tagName, Value: constants_0.tagValue }
+    ];
 }
 
 module.exports = {
     ...constants_0,
-    getTagsObject
+    getTagsObject,
+    getTagsArray
 }
