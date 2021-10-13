@@ -45,7 +45,7 @@ async function Initialize() {
 
     await InitializeRole(client, constants.names.imagebuilder, 'imagebuilder');
     await InitializeRole(client, constants.names.dockerHost, 'docker-host');
-    await InitializeRole(client, constants.names.controller, 'webhook-listener');
+    await InitializeRole(client, constants.names.controller, 'controller');
 }
 
 module.exports = Initialize;

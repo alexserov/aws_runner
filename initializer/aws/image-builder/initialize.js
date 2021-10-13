@@ -63,7 +63,7 @@ async function InitializeImage(options) {
     const infrastructureConfiguration = await client.send(new CreateInfrastructureConfigurationCommand({
         name: options.names.infrastructureConfiguration,
         description: `Infrastructure config for DevExtreme Github Actions runner ${options.suffix}`,
-        instanceProfileName: iamConstants.names.imagebuilder_profile,
+        instanceProfileName: iamConstants.names.imagebuilder.profile,
         subnetId: subnetId,
         securityGroupIds: [securityGroupId],
         terminateInstanceOnFailure: true,

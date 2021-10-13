@@ -47,6 +47,8 @@ async function Cleanup() {
     const client = new IAMClient();
 
     await CleanupRole(client, constants.names.imagebuilder);
+    await CleanupRole(client, constants.names.dockerHost);
+    await CleanupRole(client, constants.names.controller);
 }
 
 module.exports = Cleanup;
