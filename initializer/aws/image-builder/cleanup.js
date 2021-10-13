@@ -12,10 +12,8 @@ const {
     ListDistributionConfigurationsCommand,
     DeleteDistributionConfigurationCommand,
 } = require('@aws-sdk/client-imagebuilder');
-const {
-    constants: globalConstants
-} = require('../global');
 
+const globalConstants = require('../global');
 const constants = require('./constants');
 
 async function Cleanup() {

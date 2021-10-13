@@ -30,9 +30,12 @@ phases:
         action: ExecuteBash
         inputs:
           commands:
-            - echo "EC2_AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)" | sudo tee -a /etc/environment
-            - echo "EC2_REGION=`echo \"$EC2_AVAIL_ZONE\" | sed 's/[a-z]$//'`" | sudo tee -a /etc/environment
-            - echo "EC2_ACCOUNT=`aws sts get-caller-identity | jq -r .Account`" | sudo tee -a /etc/environment
+            - EC2_AVAIL_ZONE=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
+            - EC2_REGION="`echo $EC2_AVAIL_ZONE | sed 's/[a-z]$//'`"
+            - EC2_ACCOUNT=$(aws sts get-caller-identity | jq -r .Account)
+            - echo "EC2_AVAIL_ZONE=$EC2_AVAIL_ZONE" | sudo tee -a /etc/environment
+            - echo "EC2_REGION=$EC2_REGION" | sudo tee -a /etc/environment
+            - echo "EC2_ACCOUNT=$EC2_ACCOUNT" | sudo tee -a /etc/environment
       - name: RebootToEnablePermissions
         action: Reboot
       - name: WaitDockerServiceStartupPostReboot
@@ -66,5 +69,5 @@ phases:
         inputs:
           commands:
             - echo aws ecr get-login-password --region $EC2_REGION | docker login --username AWS --password-stdin $EC2_ACCOUNT.dkr.ecr.$EC2_REGION.amazonaws.com
-            - sudo aws ecr get-login-password --region $EC2_REGION | docker login --username AWS --password-stdin $EC2_ACCOUNT.dkr.ecr.$EC2_REGION.amazonaws.com
-            - sudo docker pull $EC2_ACCOUNT.dkr.ecr.$EC2_REGION.amazonaws.com/aws-runner:runner
+            - sudo -H -u ubuntu bash -c "aws ecr get-login-password --region $EC2_REGION | docker login --username AWS --password-stdin $EC2_ACCOUNT.dkr.ecr.$EC2_REGION.amazonaws.com"
+            - sudo -H -u ubuntu bash -c "docker pull $EC2_ACCOUNT.dkr.ecr.$EC2_REGION.amazonaws.com/aws-runner:runner"

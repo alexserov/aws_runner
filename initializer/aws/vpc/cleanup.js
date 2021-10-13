@@ -15,9 +15,8 @@ const {
     DisassociateRouteTableCommand,
     DeleteVpcEndpointsCommand,
     DescribeVpcEndpointsCommand} = require('@aws-sdk/client-ec2');
-const {
-    constants: globalConstants
-} = require('../global');
+
+const globalConstants = require('../global');
 
 
 

@@ -7,9 +7,7 @@ const {
     PutBucketTaggingCommand,
     DeleteObjectCommand
 } = require('@aws-sdk/client-s3')
-const {
-    constants: globalConstants
-} = require('./global');
+const globalConstants = require('./global');
 
 const constants = {
     names: {

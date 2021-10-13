@@ -16,9 +16,8 @@ const {
 } = require('@aws-sdk/client-ec2')
 const { readFileSync } = require('fs');
 const path = require('path');
-const {
-    constants: globalConstants
-} = require('../global');
+
+const globalConstants = require('../global');
 const {
     constants: vpcConstants
 } = require('../vpc');
