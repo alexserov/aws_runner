@@ -5,7 +5,7 @@ const {
 const globalConstants = require('../global');
 const constants = require('./constants');
 
-async function CleanupRole(client, roleName, profileName) {
+async function CleanupRole(client, name) {
     const catchNoEntity = x => {
         if (x?.Code === 'NoSuchEntity') {
             //okay
@@ -15,14 +15,14 @@ async function CleanupRole(client, roleName, profileName) {
     };
 
     await client.send(new RemoveRoleFromInstanceProfileCommand({
-        InstanceProfileName: profileName,
-        RoleName: roleName
+        InstanceProfileName: name.profile,
+        RoleName: name.role
     })).catch(catchNoEntity);
     await client.send(new DeleteInstanceProfileCommand({
-        InstanceProfileName: profileName
+        InstanceProfileName: name.profile
     })).catch(catchNoEntity);
     await client.send(new ListRolePoliciesCommand({
-        RoleName: roleName
+        RoleName: name.role
     })).catch(err => {
         if (err?.Code === 'NoSuchEntity') {
             return { PolicyNames: [] };
@@ -33,12 +33,12 @@ async function CleanupRole(client, roleName, profileName) {
         await Promise.all(response.PolicyNames.map(async (policy) => {
             await client.send(new DeleteRolePolicyCommand({
                 PolicyName: policy,
-                RoleName: roleName
+                RoleName: name.role
             }));
         }));
     })
     await client.send(new DeleteRoleCommand({
-        RoleName: constants.names.imagebuilder_role
+        RoleName: name.role
     })).catch(catchNoEntity);
 }
 
@@ -46,7 +46,7 @@ async function Cleanup() {
     console.log('IAM Cleanup');
     const client = new IAMClient();
 
-    await CleanupRole(client, constants.names.imagebuilder_role, constants.names.imagebuilder_profile);
+    await CleanupRole(client, constants.names.imagebuilder);
 }
 
 module.exports = Cleanup;

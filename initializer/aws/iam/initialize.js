@@ -6,11 +6,11 @@ const { join, basename } = require('path');
 const globalConstants = require('../global');
 const constants = require('./constants');
 
-async function InitializeRole(client, roleName, profileName, folder) {
+async function InitializeRole(client, name, folder) {
     await client.send(new CreateRoleCommand({
-        RoleName: roleName,
+        RoleName: name.role,
         AssumeRolePolicyDocument: readFileSync(join(__dirname, 'data', folder, 'trust-policy.json')).toString(),
-        Tags: globalConstants.getTagsArray(roleName),
+        Tags: globalConstants.getTagsArray(name.role),
     })).then(async (response) => {
         const role = response.Role;
 
@@ -27,14 +27,14 @@ async function InitializeRole(client, roleName, profileName, folder) {
         }));
     });
     await client.send(new CreateInstanceProfileCommand({
-        InstanceProfileName: profileName,
+        InstanceProfileName: name.profile,
         Path: '/',
-        Tags: globalConstants.getTagsArray(roleName),
+        Tags: globalConstants.getTagsArray(name.role),
     }));
 
     await client.send(new AddRoleToInstanceProfileCommand({
-        InstanceProfileName: profileName,
-        RoleName: roleName
+        InstanceProfileName: name.profile,
+        RoleName: name.role
     }));
 }
 
@@ -43,7 +43,9 @@ async function Initialize() {
     
     const client = new IAMClient();
 
-    await InitializeRole(client, constants.names.imagebuilder_role, constants.names.imagebuilder_profile, 'imagebuilder');
+    await InitializeRole(client, constants.names.imagebuilder, 'imagebuilder');
+    await InitializeRole(client, constants.names.dockerHost, 'docker-host');
+    await InitializeRole(client, constants.names.controller, 'webhook-listener');
 }
 
 module.exports = Initialize;

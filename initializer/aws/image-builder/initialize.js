@@ -82,7 +82,7 @@ async function InitializeImage(options) {
         supportedOsVersions: [
             'Ubuntu 20'
         ],
-        data: readFileSync(path.join(__dirname, `../data/${options.componentYaml}`)).toString(),
+        data: readFileSync(path.join(__dirname, `data/${options.componentYaml}`)).toString(),
         semanticVersion: today
     }));
     await TagResource(client, component.componentBuildVersionArn, options.names.component);
@@ -149,38 +149,45 @@ async function InitializeImage(options) {
     }));
     await TagResource(client, imagePipeline.imagePipelineArn, options.names.imagePipeline);
 }
+async function PrepareConfigs(roleName, subdir) {
+    const s3Client = new S3Client();
+    const iamClient = new IAMClient();
+
+    const controllerRole = await iamClient.send(new GetRoleCommand({
+        RoleName: roleName
+    })).then(x => x.Role.Arn);
+
+    let config = readFileSync(path.join(__dirname, 'data/cli-config')).toString();
+    config = config.replace('ROLE_ARN_VALUE', controllerRole).replace('REGION_VALUE', globalConstants.region);
+    await s3Client.send(new PutObjectCommand({
+        Bucket: s3Constants.names.bucket,
+        Key: `${subdir}/aws-cli/config`,
+        Body: config,
+    }));
+}
 
 async function Initialize() {
     await InitializeImage({
         suffix: 'host',
-        names: constants.names['host'],
-        instanceType: 'm5.large',
+        names: constants.names.host,
         componentYaml: 'host-component.yaml',
         publicComponents: [
             { componentArn: 'arn:aws:imagebuilder:eu-central-1:aws:component/docker-ce-ubuntu/1.0.0/1' },
             { componentArn: 'arn:aws:imagebuilder:eu-central-1:aws:component/nodejs-12-lts-linux/1.0.1/1' }
         ]
     });
+    await PrepareConfigs(iamConstants.names.dockerHost.role, 'docker-host');
+
     await InitializeImage({
         suffix: 'listener',
-        names: constants.names['listener'],
-        instanceType: 't2.nano',
+        names: constants.names.listener,
         componentYaml: 'controller-component.yaml',
-        publicComponents: []
+        publicComponents: [
+            { componentArn: 'arn:aws:imagebuilder:eu-central-1:aws:component/nodejs-12-lts-linux/1.0.1/1' }
+        ]
     });
-    const s3Client = new S3Client();
-    const iamClient = new IAMClient();
+    await PrepareConfigs(iamConstants.names.dockerHost.role, 'controller');
 
-    const role = await iamClient.send(new GetRoleCommand({
-        RoleName: 'EC2InstanceProfileForImageBuilder'
-    })).then(x => x.Role.Arn);
-    let config = readFileSync(path.join(__dirname, '../data/cli-config')).toString();
-    config = config.replace('ROLE_ARN_VALUE', role).replace('REGION_VALUE', globalConstants.region);
-    await s3Client.send(new PutObjectCommand({
-        Bucket: s3Constants.names.bucket,
-        Key: 'aws-cli/config',
-        Body: config,
-    }))
 }
 
 module.exports = Initialize;

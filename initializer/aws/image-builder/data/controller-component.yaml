@@ -1,0 +1,38 @@
+name: devextreme-ga-host-initialization
+description: Custom initialization for GA runners machine host
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: InstallCli
+        action: ExecuteBash
+        inputs:
+          commands:
+            - sudo apt-get update 
+            - sudo apt-get install jq git awscli -y
+      - name: CreateConfigFolder
+        action: CreateFolder
+        inputs:
+          - path: /home/ubuntu/.aws
+      - name: DownloadConfig
+        action: ExecuteBash
+        inputs:
+          commands:
+            - aws s3 cp s3://devextreme-ga-configs/controller/aws-cli/config /home/ubuntu/.aws/config
+      - name: SetAwsFolderOwner
+        action: SetFolderOwner
+        inputs:
+          - path: /home/ubuntu
+            owner: ubuntu
+            recursive: true
+      - name: WriteEnv
+        action: ExecuteBash
+        inputs:
+          commands:
+            - EC2_AVAIL_ZONE=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
+            - EC2_REGION="`echo $EC2_AVAIL_ZONE | sed 's/[a-z]$//'`"
+            - EC2_ACCOUNT=$(aws sts get-caller-identity | jq -r .Account)
+            - echo "EC2_AVAIL_ZONE=$EC2_AVAIL_ZONE" | sudo tee -a /etc/environment
+            - echo "EC2_REGION=$EC2_REGION" | sudo tee -a /etc/environment
+            - echo "EC2_ACCOUNT=$EC2_ACCOUNT" | sudo tee -a /etc/environment

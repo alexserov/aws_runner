@@ -1,10 +1,5 @@
 version: '3'
 services:
-  host:
-    image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${DOCKER_REPO_NAME}:host
-    build:
-      context: ./
-      target: host
   runner:
     image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${DOCKER_REPO_NAME}:runner
     build:

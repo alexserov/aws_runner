@@ -19,7 +19,7 @@ phases:
         action: ExecuteBash
         inputs:
           commands:
-            - aws s3 cp s3://devextreme-ga-configs/aws-cli/config /home/ubuntu/.aws/config
+            - aws s3 cp s3://devextreme-ga-configs/docker-host/aws-cli/config /home/ubuntu/.aws/config
       - name: SetAwsFolderOwner
         action: SetFolderOwner
         inputs:

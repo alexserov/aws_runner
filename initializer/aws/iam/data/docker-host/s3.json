@@ -1,0 +1,13 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Stmt1634127354000",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::devextreme-ga-configs/docker-host.tar.gz,arn:aws:s3:::devextreme-ga-configs/docker-host/aws-cli/config"
+    }
+  ]
+}

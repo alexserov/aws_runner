@@ -47,35 +47,6 @@ RUN npm set audit false
 RUN npm set fund false
 
 #=====================
-# HOST
-#=====================
-FROM base as host
-
-#register gpg key
-RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg > gpg
-RUN apt-key add ./gpg
-RUN rm ./gpg
-#add docker repo
-RUN add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
-RUN apt-cache policy docker-ce
-RUN apt install docker-ce uidmap dbus-user-session -y
-WORKDIR /home/host
-
-COPY host.sh host.sh
-COPY ./temp/runner-controller/ runner-controller
-RUN chmod +x host.sh
-RUN apt install iptables
-#RUN modprobe ip_tables
-
-ENTRYPOINT ["./host.sh"]
-
-#=====================
-# HOST-LOCAL
-#=====================
-FROM host as host-local
-RUN aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-
-#=====================
 # RUNNER-BASE
 #=====================
 FROM base as runner-base
