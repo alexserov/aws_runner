@@ -40,6 +40,8 @@ async function Cleanup() {
         }));
         return x.VpcEndpointId;
     })).then(async x => {
+        if (!x.length)
+            return;
         for (let i = 0; i < 30; i++) {
             const deletionResponse = await client.send(new DescribeVpcEndpointsCommand({
                 VpcEndpointIds: x
@@ -50,6 +52,8 @@ async function Cleanup() {
             if (deletionResponse.VpcEndpoints && deletionResponse.VpcEndpoints.length) {
                 await new Promise(r => setTimeout(r, 30000));
                 console.log(`\t\twaiting (${i} of 30)`);
+            } else {
+                break;
             }
         }
     });

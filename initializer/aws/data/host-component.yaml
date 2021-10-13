@@ -1,28 +1,70 @@
-name: HelloWorldTestingDocument
-description: This is hello world testing document.
+name: devextreme-ga-host-initialization
+description: Custom initialization for GA runners machine host
 schemaVersion: 1.0
 
 phases:
   - name: build
     steps:
-      - name: HelloWorldStep
+      - name: InstallCli
         action: ExecuteBash
         inputs:
           commands:
-            - echo "Hello World! Build."
+            - sudo apt-get update 
+            - sudo apt-get install jq git awscli -y
+      - name: CreateConfigFolder
+        action: CreateFolder
+        inputs:
+          - path: /home/ubuntu/.aws
+      - name: DownloadConfig
+        action: ExecuteBash
+        inputs:
+          commands:
+            - aws s3 cp s3://devextreme-ga-configs/aws-cli/config /home/ubuntu/.aws/config
+      - name: SetAwsFolderOwner
+        action: SetFolderOwner
+        inputs:
+          - path: /home/ubuntu
+            owner: ubuntu
+            recursive: true
+      - name: WriteEnv
+        action: ExecuteBash
+        inputs:
+          commands:
+            - echo "EC2_AVAIL_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)" | sudo tee -a /etc/environment
+            - echo "EC2_REGION=`echo \"$EC2_AVAIL_ZONE\" | sed 's/[a-z]$//'`" | sudo tee -a /etc/environment
+            - echo "EC2_ACCOUNT=`aws sts get-caller-identity | jq -r .Account`" | sudo tee -a /etc/environment
+      - name: RebootToEnablePermissions
+        action: Reboot
+      - name: WaitDockerServiceStartupPostReboot
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              STATUS=fail
 
-  - name: validate
-    steps:
-      - name: HelloWorldStep
-        action: ExecuteBash
-        inputs:
-          commands:
-            - echo "Hello World! Validate."
+              # Total sleep time ~180 seconds for service startup.
+              echo 'Waiting for the Docker service to start...'
+              for i in {0..35}
+              do
+                  CUR_STATE=$(systemctl is-active docker)
+                  if [[ $CUR_STATE == "active" ]]; then
+                      echo "Docker service is active."
+                      STATUS=success
+                      break
+                  else
+                      echo "Docker service is not yet active. State '$CUR_STATE'. Sleeping 5 seconds..."
+                      sleep 5
+                  fi
+              done
 
-  - name: test
-    steps:
-      - name: HelloWorldStep
+              if [[ $STATUS == "fail" ]]; then
+                  echo "Docker service failed to start within timeout period. Failing."
+                  exit 1
+              fi
+      - name: PullImages
         action: ExecuteBash
         inputs:
           commands:
-            - echo "Hello World! Test."
+            - echo aws ecr get-login-password --region $EC2_REGION | docker login --username AWS --password-stdin $EC2_ACCOUNT.dkr.ecr.$EC2_REGION.amazonaws.com
+            - sudo aws ecr get-login-password --region $EC2_REGION | docker login --username AWS --password-stdin $EC2_ACCOUNT.dkr.ecr.$EC2_REGION.amazonaws.com
+            - sudo docker pull $EC2_ACCOUNT.dkr.ecr.$EC2_REGION.amazonaws.com/aws-runner:runner

@@ -15,21 +15,14 @@ function DefineEndpoints(suffixes) {
     return result;
 }
 
-const endpointSuffixes = [
-    'imagebuilder',
-    'ssm',
-    'ec2messages',
-    'ssmmessages',
-    'logs',
-    'events',
-];
 module.exports = {
-    endpointSuffixes,
     names: {
         build: {
             ...DefineVpcNames('build'),
-            ...DefineEndpoints(endpointSuffixes)
         },
-        run: DefineVpcNames('run')
+        run: {
+            ...DefineVpcNames('run'),
+            endpoint_s3: `devextreme-ga-routeTable-run-ep-s3`
+        }
     }
 };

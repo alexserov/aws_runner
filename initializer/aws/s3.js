@@ -25,16 +25,28 @@ async function Cleanup() {
     if (!buckets.Buckets?.map(x => x.Name)?.includes(constants.names.bucket))
         return;
     
-    const versions = await client.send(new ListObjectVersionsCommand({
+    await client.send(new ListObjectVersionsCommand({
         Bucket: constants.names.bucket,
-    }));
-    if (versions.Versions) {
-        await Promise.all(versions.Versions.map(x => client.send(new DeleteObjectCommand({
-            Bucket: constants.names.bucket,
-            Key: x.Key,
-            VersionId: x.VersionId
-        }))));
-    }
+    })).then(async versions => {
+        if (versions.DeleteMarkers) {
+            await Promise.all(versions.DeleteMarkers.map(x => client.send(new DeleteObjectCommand({
+                Bucket: constants.names.bucket,
+                Key: x.Key,
+                VersionId: x.VersionId
+            }))));
+        }
+    });
+    await client.send(new ListObjectVersionsCommand({
+        Bucket: constants.names.bucket,
+    })).then(async versions => {
+        if (versions.Versions) {
+            await Promise.all(versions.Versions.map(x => client.send(new DeleteObjectCommand({
+                Bucket: constants.names.bucket,
+                Key: x.Key,
+                VersionId: x.VersionId
+            }))));
+        }
+    });
 
     await client.send(new DeleteBucketCommand({
         Bucket: constants.names.bucket,

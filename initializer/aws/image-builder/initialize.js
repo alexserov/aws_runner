@@ -8,6 +8,10 @@ const {
     CreateDistributionConfigurationCommand,
 } = require('@aws-sdk/client-imagebuilder');
 const {
+    IAMClient,
+    GetRoleCommand,
+} = require('@aws-sdk/client-iam')
+const {
     EC2Client, DescribeSubnetsCommand, DescribeSecurityGroupsCommand, DescribeVpcsCommand
 } = require('@aws-sdk/client-ec2')
 const { readFileSync } = require('fs');
@@ -22,6 +26,7 @@ const {
     constants: s3Constants
 } = require('../s3');
 const constants = require('./constants');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
 async function TagResource(client, resource, name) {
     await client.send(new TagResourceCommand({
@@ -63,15 +68,6 @@ async function InitializeImage(options) {
         name: options.names.infrastructureConfiguration,
         description: `Infrastructure config for DevExtreme Github Actions runner ${options.suffix}`,
         instanceProfileName: 'EC2InstanceProfileForImageBuilder',
-        // instanceTypes: [
-        //     options.instanceType
-        // ],
-        logging: {
-            s3Logs: {
-                s3BucketName: s3Constants.names.bucket,
-                s3KeyPrefix: 'dxga'
-            }
-        },
         subnetId: subnetId,
         securityGroupIds: [securityGroupId],
         terminateInstanceOnFailure: true,
@@ -176,6 +172,19 @@ async function Initialize() {
         componentYaml: 'controller-component.yaml',
         publicComponents: []
     });
+    const s3Client = new S3Client();
+    const iamClient = new IAMClient();
+
+    const role = await iamClient.send(new GetRoleCommand({
+        RoleName: 'EC2InstanceProfileForImageBuilder'
+    })).then(x => x.Role.Arn);
+    let config = readFileSync(path.join(__dirname, '../data/cli-config')).toString();
+    config = config.replace('ROLE_ARN_VALUE', role).replace('REGION_VALUE', globalConstants.region);
+    await s3Client.send(new PutObjectCommand({
+        Bucket: s3Constants.names.bucket,
+        Key: 'aws-cli/config',
+        Body: config,
+    }))
 }
 
 module.exports = Initialize;

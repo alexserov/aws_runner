@@ -1,0 +1,4 @@
+[profile ubuntu]
+role_arn = ROLE_ARN_VALUE
+credential_source = Ec2InstanceMetadata
+region = REGION_VALUE

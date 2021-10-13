@@ -126,6 +126,22 @@ async function Initialize() {
             await client.send(new CreateDefaultVpcCommand());
         }
     });
+        //TODO pass client as arg to functions above
+    const modifyVpcAttributeResponse1 = await client.send(new ModifyVpcAttributeCommand({
+        VpcId: run.vpcId,
+        EnableDnsSupport: {
+            Value: true
+        }
+    }));
+    
+    
+    await client.send(new CreateVpcEndpointCommand({
+        VpcId: run.vpcId,
+        ServiceName: `com.amazonaws.${globalConstants.region}.s3`,
+        VpcEndpointType: 'Gateway',
+    }))
+        .then(x => x.VpcEndpoint.VpcEndpointId)
+        .then(x => SetResourceName(client, x, constants.names.run.endpoint_s3));
 }
 
 module.exports = Initialize;
