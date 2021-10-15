@@ -1,20 +1,21 @@
-const vpc = require('./aws/vpc');
-const s3 = require('./aws/s3');
-const imagebuilder = require('./aws/image-builder');
-const iam = require('./aws/iam');
-const globalConstants = require('./aws/global');
+const vpc = require('./initializer/vpc');
+const s3 = require('./initializer/s3');
+const imagebuilder = require('./initializer/image-builder');
+const iam = require('./initializer/iam');
+const globalConstants = require('./initializer/global');
+const builder = require('./builder');
 
-async function Cleanup() {
-    await imagebuilder.Cleanup();
-    await s3.Cleanup();
-    await vpc.Cleanup();
-    await iam.Cleanup();
+async function Cleanup(logCallback) {
+    await imagebuilder.Cleanup(logCallback);
+    await s3.Cleanup(logCallback);
+    await vpc.Cleanup(logCallback);
+    await iam.Cleanup(logCallback);
 }
-async function Initialize() {
-    await iam.Initialize();
-    await vpc.Initialize();
-    await s3.Initialize();
-    await imagebuilder.Initialize();
+async function Initialize(logCallback) {
+    await iam.Initialize(logCallback);
+    await vpc.Initialize(logCallback);
+    await s3.Initialize(logCallback);
+    await imagebuilder.Initialize(logCallback);
 }
 
 function Apply(config) {
@@ -28,8 +29,13 @@ function Apply(config) {
     iam.constants.apply(config);
 }
 
-module.exports = async function main(config) {
-    Apply(config);
-    await Cleanup();
-    await Initialize();
+module.exports = {
+    async initialize(config, logCallback) {
+        Apply(config);
+        await Cleanup(logCallback);
+        await Initialize(logCallback);
+    },
+    async rebuild(config, logCallback) {
+        await builder(config, logCallback);
+    },
 };

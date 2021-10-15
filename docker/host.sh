@@ -10,4 +10,4 @@ trap 'cleanup; exit 130' INT
 trap 'cleanup; exit 143' TERM
 
 dockerd &
-node ./runner-controller/index.js
+node ./docker-host/index.js

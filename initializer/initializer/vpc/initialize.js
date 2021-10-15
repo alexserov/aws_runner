@@ -29,12 +29,12 @@ async function SetResourceName(client, resourceId, resourceName) {
     }));
 }
 
-async function InitializeVPC(options) {
-    console.log('VPC Initialization');
+async function InitializeVPC(options, logCallback) {
+    logCallback('VPC Initialization');
 
     const client = new EC2Client();
     // # https://eu-central-1.console.aws.amazon.com/vpc/home
-    console.log('\tCreating VPC');
+    logCallback('\tCreating VPC');
     const createVpcResponse = await client.send(new CreateVpcCommand({
         CidrBlock: options.cidr,
 
@@ -44,7 +44,7 @@ async function InitializeVPC(options) {
     await SetResourceName(client, vpcId, options.names.vpc);
 
     // # https://eu-central-1.console.aws.amazon.com/vpc/home#igws:
-    console.log('\tCreating Interntet gateway');
+    logCallback('\tCreating Interntet gateway');
     const createInternetGatewayResponse = await client.send(new CreateInternetGatewayCommand({}));
     const internetGatewayId = createInternetGatewayResponse.InternetGateway.InternetGatewayId;
     await SetResourceName(client, internetGatewayId, options.names.gateway);
@@ -54,7 +54,7 @@ async function InitializeVPC(options) {
         VpcId: vpcId,
     }));
     // # https://eu-central-1.console.aws.amazon.com/vpc/home#subnets:
-    console.log('\tCreating subnet');
+    logCallback('\tCreating subnet');
     const createSubnetResponse = await client.send(new CreateSubnetCommand({
         VpcId: vpcId,
         CidrBlock: options.cidr,
@@ -63,7 +63,7 @@ async function InitializeVPC(options) {
     SetResourceName(client, subnetId, options.names.subnet);
 
     // # https://eu-central-1.console.aws.amazon.com/vpc/home#securityGroups:
-    console.log('\tCreating security group');
+    logCallback('\tCreating security group');
     const createSecurityGroupResponse = await client.send(new CreateSecurityGroupCommand({
         GroupName: options.names.securityGroup,
         Description: 'Security group for devextreme Gitub Actions',
@@ -111,11 +111,11 @@ async function InitializeVPC(options) {
         routeTableId,
     };
 }
-async function Initialize() {
+async function Initialize(logCallback) {
     const run = await InitializeVPC({
         names: constants.names.run,
         cidr: '10.0.0.0/16',
-    });
+    }, logCallback);
     const client = new EC2Client();
     await client.send(new DescribeVpcsCommand({})).then(async (response) => {
         const defaultVpcs = response.Vpcs.filter((x) => x.IsDefault);

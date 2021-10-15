@@ -2,8 +2,10 @@
   "name": "aws_runner",
   "version": "1.0.0",
   "description": "",
-  "main": "env.private.js",
-  "dependencies": {},
+  "main": "index.js",
+  "dependencies": {
+    
+  },
   "devDependencies": {
     "eslint": "^7.32.0",
     "eslint-config-airbnb-base": "^14.2.1",

@@ -8,8 +8,8 @@ const {
 
 const constants = require('./constants');
 
-async function Cleanup() {
-    console.log('S3 Cleanup');
+async function Cleanup(logCallback) {
+    logCallback('S3 Cleanup');
     const client = new S3Client();
 
     const buckets = await client.send(new ListBucketsCommand({}));

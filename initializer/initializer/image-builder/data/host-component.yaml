@@ -70,4 +70,4 @@ phases:
           commands:
             - echo aws ecr get-login-password --region $EC2_REGION | docker login --username AWS --password-stdin $EC2_ACCOUNT.dkr.ecr.$EC2_REGION.amazonaws.com
             - sudo -H -u ubuntu bash -c "aws ecr get-login-password --region $EC2_REGION | docker login --username AWS --password-stdin $EC2_ACCOUNT.dkr.ecr.$EC2_REGION.amazonaws.com"
-            - sudo -H -u ubuntu bash -c "docker pull $EC2_ACCOUNT.dkr.ecr.$EC2_REGION.amazonaws.com/aws-runner:runner"
+            - sudo -H -u ubuntu bash -c "docker pull $EC2_ACCOUNT.dkr.ecr.$EC2_REGION.amazonaws.com/aws-runner:runner" #TODO pass aws-runner through env variable

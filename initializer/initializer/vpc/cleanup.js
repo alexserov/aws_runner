@@ -19,8 +19,8 @@ const {
 
 const globalConstants = require('../global');
 
-async function Cleanup() {
-    console.log('VPC Cleanup');
+async function Cleanup(logCallback) {
+    logCallback('VPC Cleanup');
     const client = new EC2Client();
 
     const filterSettings = {
@@ -29,7 +29,7 @@ async function Cleanup() {
         ],
     };
 
-    console.log('\tRemoving VPC endpoints');
+    logCallback('\tRemoving VPC endpoints');
     const describeVpcEndpointsResponse = await client.send(new DescribeVpcEndpointsCommand(filterSettings));
     await Promise.all(describeVpcEndpointsResponse.VpcEndpoints?.map(async (x) => {
         await client.send(new DeleteVpcEndpointsCommand({
@@ -47,14 +47,14 @@ async function Cleanup() {
             if (deletionResponse.VpcEndpoints && deletionResponse.VpcEndpoints.length) {
                 // eslint-disable-next-line no-await-in-loop
                 await new Promise((r) => setTimeout(r, 30000));
-                console.log(`\t\twaiting (${i} of 30)`);
+                logCallback(`\t\twaiting (${i} of 30)`);
             } else {
                 break;
             }
         }
     });
 
-    console.log('\tRemoving Route tables');
+    logCallback('\tRemoving Route tables');
 
     const describeRouteTablesResponse = await client.send(new DescribeRouteTablesCommand(filterSettings));
 
@@ -80,7 +80,7 @@ async function Cleanup() {
         }));
     }));
 
-    console.log('\tRemoving Internet gateway');
+    logCallback('\tRemoving Internet gateway');
     const describeGatewaysResponse = await client.send(new DescribeInternetGatewaysCommand(filterSettings));
     await Promise.all(describeGatewaysResponse.InternetGateways?.map(async (x) => {
         if (x.Attachments) {
@@ -96,7 +96,7 @@ async function Cleanup() {
         }));
     }));
 
-    console.log('\tRemoving subnets');
+    logCallback('\tRemoving subnets');
     const describeSubnetsResponse = await client.send(new DescribeSubnetsCommand(filterSettings));
     await Promise.all(describeSubnetsResponse.Subnets?.map(async (x) => {
         await client.send(new DeleteSubnetCommand({
@@ -104,7 +104,7 @@ async function Cleanup() {
         }));
     }));
 
-    console.log('\tRemoving security groups');
+    logCallback('\tRemoving security groups');
     const describeGroupsResponse = await client.send(new DescribeSecurityGroupsCommand(filterSettings));
     await Promise.all(describeGroupsResponse.SecurityGroups?.map(async (x) => {
         await client.send(new DeleteSecurityGroupCommand({
@@ -112,7 +112,7 @@ async function Cleanup() {
         }));
     }));
 
-    console.log('\tRemoving VPCs');
+    logCallback('\tRemoving VPCs');
     const describeVpcsResponse = await client.send(new DescribeVpcsCommand(filterSettings));
     await Promise.all(describeVpcsResponse.Vpcs?.map(async (x) => {
         for (let i = 0; i < 5; i++) {

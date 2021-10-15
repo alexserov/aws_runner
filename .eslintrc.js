@@ -12,7 +12,6 @@ module.exports = {
     },
     rules: {
         'no-plusplus': 'off',
-        'no-console': 'off',
         'max-len': 'off',
         'no-use-before-define': 'off',
         indent: ['error', 4],

@@ -6,7 +6,9 @@ const { join, basename } = require('path');
 const globalConstants = require('../global');
 const constants = require('./constants');
 
-async function InitializeRole(client, name, folder) {
+async function InitializeRole(client, name, folder, logCallback) {
+    logCallback(`\t${name}`);
+
     await client.send(new CreateRoleCommand({
         RoleName: name.role,
         AssumeRolePolicyDocument: readFileSync(join(__dirname, 'data', folder, 'trust-policy.json')).toString(),
@@ -37,8 +39,8 @@ async function InitializeRole(client, name, folder) {
     }));
 }
 
-async function Initialize() {
-    console.log('IAM Initialization');
+async function Initialize(logCallback) {
+    logCallback('IAM Initialization');
 
     const client = new IAMClient();
 

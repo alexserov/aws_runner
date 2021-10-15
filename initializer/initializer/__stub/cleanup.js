@@ -5,8 +5,8 @@ const {
 const globalConstants = require('../global');
 const constants = require('./constants');
 
-async function Cleanup() {
-  console.log('Cleanup');
+async function Cleanup(logCallback) {
+  logCallback('Cleanup');
   const client = new EC2Client();
 }
 

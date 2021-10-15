@@ -7,8 +7,8 @@ const {
 const globalConstants = require('../global');
 const constants = require('./constants');
 
-async function Initialize() {
-    console.log('S3 Initialization');
+async function Initialize(logCallback) {
+    logCallback('S3 Initialization');
     // # TODO: manage access
     const client = new S3Client();
 

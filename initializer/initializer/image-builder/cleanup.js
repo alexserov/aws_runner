@@ -16,11 +16,11 @@ const {
 const globalConstants = require('../global');
 const constants = require('./constants');
 
-async function Cleanup() {
-    console.log('AMI Cleanup');
+async function Cleanup(logCallback) {
+    logCallback('AMI Cleanup');
     const client = new ImagebuilderClient();
     // ################################
-    console.log('\tRemoving image pipelines');
+    logCallback('\tRemoving image pipelines');
     // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/pipelines
     // ################################
     const listImagePipelinesResponse = await client.send(new ListImagePipelinesCommand({}));
@@ -32,7 +32,7 @@ async function Cleanup() {
         }
     }));
     // ################################
-    console.log('\tRemoving image recipes');
+    logCallback('\tRemoving image recipes');
     // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/imageRecipes
     // ################################
     const listImageRecipesResponse = await client.send(new ListImageRecipesCommand({}));
@@ -45,7 +45,7 @@ async function Cleanup() {
     }));
 
     // ################################
-    console.log('\tRemoving components');
+    logCallback('\tRemoving components');
     // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/components
     // ################################
     const listComponentsResponse = await client.send(new ListComponentsCommand({}));
@@ -67,7 +67,7 @@ async function Cleanup() {
         }
     }));
     // ################################
-    console.log('\tRemoving infrastructure configs');
+    logCallback('\tRemoving infrastructure configs');
     // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/infraConfigurations
     // ################################
     const listInfrastructureConfigurationsResponse = await client.send(new ListInfrastructureConfigurationsCommand({}));
@@ -79,7 +79,7 @@ async function Cleanup() {
         }
     }));
     // ################################
-    console.log('\tRemoving distribution configs');
+    logCallback('\tRemoving distribution configs');
     // ################################
     const listDistributionConfigurationsResponse = await client.send(new ListDistributionConfigurationsCommand({}));
     await Promise.all(listDistributionConfigurationsResponse.distributionConfigurationSummaryList?.map(async (x) => {

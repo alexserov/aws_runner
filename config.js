@@ -63,5 +63,20 @@ module.exports = {
                 bucket: 'devextreme-ga-configs',
             },
         },
+        ecr: {
+            names: {
+                repository: 'aws-runner',
+            },
+        },
     },
+    machines: [
+        {
+            type: 'm5.large',
+            dockerInstancesCount: 4,
+        },
+        {
+            type: 'm4.large',
+            dockerInstancesCount: 4,
+        },
+    ],
 };

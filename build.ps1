@@ -2,7 +2,7 @@ Push-Location .\docker
 
 Write-Host "Building images"
 New-Item -Path ".\temp" -ItemType "directory"
-Copy-Item -Path "..\runner-controller" -Destination ".\temp" -Recurse
+Copy-Item -Path "..\docker-host" -Destination ".\temp" -Recurse
 
 docker compose build
 

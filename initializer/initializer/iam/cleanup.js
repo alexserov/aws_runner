@@ -4,7 +4,7 @@ const {
 
 const constants = require('./constants');
 
-async function CleanupRole(client, name) {
+async function CleanupRole(client, name, logCallback) {
     const catchNoEntity = (x) => {
         if (x?.Code === 'NoSuchEntity') {
             // okay
@@ -13,6 +13,7 @@ async function CleanupRole(client, name) {
         }
     };
 
+    logCallback(`\t${name}`);
     await client.send(new RemoveRoleFromInstanceProfileCommand({
         InstanceProfileName: name.profile,
         RoleName: name.role,
@@ -40,8 +41,8 @@ async function CleanupRole(client, name) {
     })).catch(catchNoEntity);
 }
 
-async function Cleanup() {
-    console.log('IAM Cleanup');
+async function Cleanup(logCallback) {
+    logCallback('IAM Cleanup');
     const client = new IAMClient();
 
     await CleanupRole(client, constants.names.imagebuilder);

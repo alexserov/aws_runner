@@ -33,8 +33,8 @@ async function TagResource(client, resource, name) {
     }));
 }
 
-async function InitializeImage(options) {
-    console.log(`AMI Initialization: ${options.suffix}`);
+async function InitializeImage(options, logCallback) {
+    logCallback(`AMI Initialization: ${options.suffix}`);
 
     const client = new ImagebuilderClient();
     const ec2Client = new EC2Client();
@@ -43,7 +43,7 @@ async function InitializeImage(options) {
     const today = `${todayValue.getFullYear()}.${(`0${todayValue.getMonth()}`).slice(-2)}.${(`0${todayValue.getDate()}`).slice(-2)}`;
 
     // ################################
-    console.log('\tCreate infrastructure config');
+    logCallback('\tCreate infrastructure config');
     // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/infraConfigurations
     // ################################
 
@@ -68,7 +68,7 @@ async function InitializeImage(options) {
     await TagResource(client, infrastructureConfiguration.infrastructureConfigurationArn, options.names.infrastructureConfiguration);
 
     // ################################
-    console.log('\tCreate component');
+    logCallback('\tCreate component');
     // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/components
     // ################################
     const component = await client.send(new CreateComponentCommand({
@@ -85,7 +85,7 @@ async function InitializeImage(options) {
     await TagResource(client, component.componentBuildVersionArn, options.names.component);
 
     // ################################
-    console.log('\tCreate image recipe');
+    logCallback('\tCreate image recipe');
     // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/imageRecipes
     // ################################
     const imageRecipe = await client.send(new CreateImageRecipeCommand({
@@ -118,7 +118,7 @@ async function InitializeImage(options) {
     await TagResource(client, imageRecipe.imageRecipeArn, options.names.imageRecipe);
 
     // ################################
-    console.log('\tCreate distribution configuration');
+    logCallback('\tCreate distribution configuration');
     // ################################
     const createDistributionConfigurationResponse = await client.send(new CreateDistributionConfigurationCommand({
         name: options.names.distributionConfiguration,
@@ -132,7 +132,7 @@ async function InitializeImage(options) {
     await TagResource(client, createDistributionConfigurationResponse.distributionConfigurationArn, options.names.distributionConfiguration);
 
     // ################################
-    console.log('\tCreate image pipeline');
+    logCallback('\tCreate image pipeline');
     // # https://eu-central-1.console.aws.amazon.com/imagebuilder/home#/pipelines
     // ################################
     const imagePipeline = await client.send(new CreateImagePipelineCommand({
@@ -146,9 +146,11 @@ async function InitializeImage(options) {
     }));
     await TagResource(client, imagePipeline.imagePipelineArn, options.names.imagePipeline);
 }
-async function PrepareConfigs(roleName, subdir) {
+async function PrepareConfigs(roleName, subdir, logCallback) {
     const s3Client = new S3Client();
     const iamClient = new IAMClient();
+
+    logCallback(`\tConfiguring role for ${roleName}`);
 
     const controllerRole = await iamClient.send(new GetRoleCommand({
         RoleName: roleName,
@@ -163,7 +165,7 @@ async function PrepareConfigs(roleName, subdir) {
     }));
 }
 
-async function Initialize() {
+async function Initialize(logCallback) {
     await InitializeImage({
         suffix: 'host',
         names: constants.names.host,
@@ -172,8 +174,8 @@ async function Initialize() {
             { componentArn: 'arn:aws:imagebuilder:eu-central-1:aws:component/docker-ce-ubuntu/1.0.0/1' },
             { componentArn: 'arn:aws:imagebuilder:eu-central-1:aws:component/nodejs-12-lts-linux/1.0.1/1' },
         ],
-    });
-    await PrepareConfigs(iamConstants.names.dockerHost.role, 'docker-host');
+    }, logCallback);
+    await PrepareConfigs(iamConstants.names.dockerHost.role, 'docker-host', logCallback);
 
     await InitializeImage({
         suffix: 'listener',
@@ -182,8 +184,8 @@ async function Initialize() {
         publicComponents: [
             { componentArn: 'arn:aws:imagebuilder:eu-central-1:aws:component/nodejs-12-lts-linux/1.0.1/1' },
         ],
-    });
-    await PrepareConfigs(iamConstants.names.dockerHost.role, 'controller');
+    }, logCallback);
+    await PrepareConfigs(iamConstants.names.dockerHost.role, 'controller', logCallback);
 }
 
 module.exports = Initialize;
