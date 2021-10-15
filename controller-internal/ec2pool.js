@@ -1,13 +1,16 @@
-const { EC2Client, RunInstancesCommand, AssociateInstanceEventWindowCommand, RequestSpotInstancesCommand, DescribeSpotPriceHistoryCommand } = require('@aws-sdk/client-ec2');
-const { ImagebuilderClient, ListImageBuildVersionsCommand, ListImagesCommand, GetImageCommand } = require('@aws-sdk/client-imagebuilder');
+const { EC2Client, RunInstancesCommand, AssociateInstanceEventWindowCommand, RequestSpotInstancesCommand, DescribeSpotPriceHistoryCommand, ModifyInstanceAttributeCommand, CreateTagsCommand, TerminateInstancesCommand, DescribeSpotInstanceRequestsCommand } = require('@aws-sdk/client-ec2');
+const { ImagebuilderClient, ListImageBuildVersionsCommand, ListImagesCommand, GetImageCommand, TagResourceCommand } = require('@aws-sdk/client-imagebuilder');
+const { request } = require('express');
 
 class EC2Pool {
     requestedCount = 0;
     actualCount = 0;
-    dockerImagesCount = 8;
-    maxInstanceCount = 10;
+    dockerImagesCount = 1;
+    maxPricePerHour = 0.05;
+    currentPricePerHour = 0;
     actionQueue = [];
     instanceStack = [];
+    lastInstanceId = 0;
 
     constructor() {
         setInterval(this.processQueue.bind(this), 1 * 1000);
@@ -26,29 +29,43 @@ class EC2Pool {
         this.requestedCount += delta;
         this.actionQueue.length = 0;
 
-        if (this.requestedCount > this.actualCount) {
-            await this.tryRunInstance();
-            return;
-        }
+        
+        await this.tryRunInstanceIfNeeded();
+
         if (this.actualCount >= this.requestedCount + this.dockerImagesCount) {
             await this.tryTerminateInstance();
             return;
         }
     }
 
-    async tryRunInstance() {
-        if (this.instanceStack.length === this.maxInstanceCount)
-            return;
-        const instancesCount = await this.runInstance();
-        this.actualCount += instancesCount * this.dockerImagesCount;
+    async tryRunInstanceIfNeeded() {
+        const instanceCandidates = ['m5.large', 'm4.large'];
+        let index = 0;
+        while (this.requestedCount > this.actualCount) {
+            if (index >= instanceCandidates.length)
+                break;
+            const instancesCount = await this.runInstance(instanceCandidates[index]);
+            this.actualCount += instancesCount * this.dockerImagesCount;
+            index++;
+        }
     }
     async tryTerminateInstance() {
-        this.actualCount -= this.dockerImagesCount;
-        const terminationCandidate = this.instanceStack.pop();
-        if (!terminationCandidate)
-            return;
+        const instancesToTerminate = Math.floor((this.actualCount - this.requestedCount) / this.dockerImagesCount);
+        for (let i = 0; i < instancesToTerminate; i++) {
+            await this.terminateInstance();
+        }
     }
-    async runInstance() {
+    async terminateInstance() {
+        const lastInstance = this.instanceStack.pop();
+        if (!lastInstance)
+            return;
+        const ec2Client = new EC2Client({});
+
+        await ec2Client.send(new TerminateInstancesCommand({
+            InstanceIds: [lastInstance]
+        }));
+    }
+    async runInstance(instanceType) {
         const imagebuilderClient = new ImagebuilderClient({});
         const latestImageVersionArn = await imagebuilderClient.send(new ListImagesCommand({
             filters: [
@@ -71,7 +88,7 @@ class EC2Pool {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const spotPrices = await ec2Client.send(new DescribeSpotPriceHistoryCommand({
-            InstanceTypes: ['m5.large'],
+            InstanceTypes: [instanceType],
             ProductDescriptions: ['Linux/UNIX (Amazon VPC)'],
             StartTime: yesterday,
             EndTime: today,
@@ -83,6 +100,8 @@ class EC2Pool {
                 max: Math.max(...prices)
             };
         });
+        if (this.currentPricePerHour + spotPrices.max > this.maxPricePerHour)
+            return 0;
         const response = await ec2Client.send(new RequestSpotInstancesCommand({
             ImageId: imageId,
             SpotPrice: spotPrices.max,
@@ -93,9 +112,46 @@ class EC2Pool {
                 IamInstanceProfile: {
                     Name: 'devextreme-ga-docker-host-profile'
                 },
-                InstanceType: 'm5.large',
-            }
+                InstanceType: instanceType,
+            },
+            TagSpecifications: [
+                {
+                    ResourceType: 'spot-instances-request',
+                    Tags: [{
+                        Key: 'dx-info',
+                        Value: 'devextreme-ga'
+                    }]
+                }
+            ]
         }));
+        let requestInfos = response.SpotInstanceRequests;
+        while (requestInfos.find(x => !x.InstanceId)) {
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            requestInfos = await ec2Client.send(new DescribeSpotInstanceRequestsCommand({
+                SpotInstanceRequestIds: requestInfos.map(x => x.SpotInstanceRequestId)
+            })).then(x => x.SpotInstanceRequests);
+            requestInfos = requestInfos.filter(x => x.Status.Code !== 'capacity-not-available');
+        }
+        if (!requestInfos.length)
+            return 0;
+        await Promise.all(requestInfos.map(x => x.InstanceId).map(async (instance, index) => {
+            await ec2Client.send(new CreateTagsCommand({
+                Resources: [instance],
+                Tags: [
+                    { Key: 'Name', Value: `devextreme-ga-runner-instance-${this.lastInstanceId+index}` },
+                    { Key: 'dx-info', Value: 'devextreme-ga' }
+                ]
+            }))
+        }));
+        this.lastInstanceId += requestInfos.length;
+
+        const result = requestInfos.map(x => ({
+            id: x.InstanceId,
+            price: +x.SpotPrice
+        }));
+        this.instanceStack.push(result);
+        this.currentPricePerHour += result.map(x => x.price).reduce((l, r) => l + r, 0);
+        return requestInfos.length;
     }
 }
 
