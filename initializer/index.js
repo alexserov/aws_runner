@@ -1,11 +1,10 @@
 const vpc = require('./aws/vpc');
 const s3 = require('./aws/s3');
 const imagebuilder = require('./aws/image-builder');
-const ec2 = require('./aws/ec2');
 const iam = require('./aws/iam');
+const globalConstants = require('./aws/global');
 
 async function Cleanup() {
-    await ec2.Cleanup();
     await imagebuilder.Cleanup();
     await s3.Cleanup();
     await vpc.Cleanup();
@@ -16,11 +15,21 @@ async function Initialize() {
     await vpc.Initialize();
     await s3.Initialize();
     await imagebuilder.Initialize();
-    await ec2.Initialize();
-}
-async function main() {
-    await Cleanup();
-    await Initialize();
 }
 
-main();
+function Apply(config) {
+    globalConstants.region = config.region;
+    globalConstants.tagValue = config.tagValue;
+    globalConstants.tagName = config.tagName;
+
+    imagebuilder.constants.apply(config);
+    s3.constants.apply(config);
+    vpc.constants.apply(config);
+    iam.constants.apply(config);
+}
+
+module.exports = async function main(config) {
+    Apply(config);
+    await Cleanup();
+    await Initialize();
+};

@@ -1,15 +1,25 @@
-function DefineImageNames(suffix) {
-    return {
-        infrastructureConfiguration: `devextreme-ga-infrastructure-config-${suffix}`,
-        component: `devextreme-ga-host-component-${suffix}`,
-        imageRecipe: `devextreme-ga-recipe-${suffix}`,
-        imagePipeline: `devextreme-ga-image-pipeline-${suffix}`,
-        distributionConfiguration: `devextreme-ga-distribution-config-${suffix}`,
-    }
-}
-module.exports = {
+const config = {
     names: {
-        host: DefineImageNames('host'),
-        listener: DefineImageNames('listener')
-    }
+        host: {
+            infrastructureConfiguration: '',
+            component: '',
+            imageRecipe: '',
+            imagePipeline: '',
+            distributionConfiguration: '',
+        },
+        listener: {
+            infrastructureConfiguration: '',
+            component: '',
+            imageRecipe: '',
+            imagePipeline: '',
+            distributionConfiguration: '',
+        },
+    },
+    // eslint-disable-next-line no-unused-vars
+    apply(_externalConfig) { },
 };
+
+const apply = (externalConfig) => Object.assign(config, externalConfig);
+config.apply = apply;
+
+module.exports = config;

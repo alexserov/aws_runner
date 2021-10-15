@@ -1,3 +1,5 @@
+#!/bin/bash
+
 pushd docker
 
 echo "Building images"

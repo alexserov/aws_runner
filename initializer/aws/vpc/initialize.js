@@ -24,8 +24,8 @@ async function SetResourceName(client, resourceId, resourceName) {
         Resources: [resourceId],
         Tags: [
             { Key: 'Name', Value: resourceName },
-            { Key: globalConstants.tagName, Value: globalConstants.tagValue }
-        ]
+            { Key: globalConstants.tagName, Value: globalConstants.tagValue },
+        ],
     }));
 }
 
@@ -34,7 +34,7 @@ async function InitializeVPC(options) {
 
     const client = new EC2Client();
     // # https://eu-central-1.console.aws.amazon.com/vpc/home
-    console.log('\tCreating VPC')
+    console.log('\tCreating VPC');
     const createVpcResponse = await client.send(new CreateVpcCommand({
         CidrBlock: options.cidr,
 
@@ -51,26 +51,26 @@ async function InitializeVPC(options) {
 
     await client.send(new AttachInternetGatewayCommand({
         InternetGatewayId: internetGatewayId,
-        VpcId: vpcId
+        VpcId: vpcId,
     }));
     // # https://eu-central-1.console.aws.amazon.com/vpc/home#subnets:
     console.log('\tCreating subnet');
     const createSubnetResponse = await client.send(new CreateSubnetCommand({
         VpcId: vpcId,
-        CidrBlock: options.cidr
-    }))
+        CidrBlock: options.cidr,
+    }));
     const subnetId = createSubnetResponse.Subnet.SubnetId;
-    SetResourceName(client, subnetId, options.names.subnet)
+    SetResourceName(client, subnetId, options.names.subnet);
 
     // # https://eu-central-1.console.aws.amazon.com/vpc/home#securityGroups:
     console.log('\tCreating security group');
     const createSecurityGroupResponse = await client.send(new CreateSecurityGroupCommand({
         GroupName: options.names.securityGroup,
         Description: 'Security group for devextreme Gitub Actions',
-        VpcId: vpcId
+        VpcId: vpcId,
     }));
     const securityGroupId = createSecurityGroupResponse.GroupId;
-    SetResourceName(client, securityGroupId, options.names.securityGroup)
+    SetResourceName(client, securityGroupId, options.names.securityGroup);
 
     await client.send(new AuthorizeSecurityGroupIngressCommand({
         GroupId: securityGroupId,
@@ -80,10 +80,10 @@ async function InitializeVPC(options) {
                 ToPort: 22,
                 FromPort: 22,
                 IpRanges: [
-                    { CidrIp: '0.0.0.0/0' }
-                ]
-            }
-        ]
+                    { CidrIp: '0.0.0.0/0' },
+                ],
+            },
+        ],
     }));
 
     const createRouteTableResponse = await client.send(new CreateRouteTableCommand({
@@ -92,15 +92,15 @@ async function InitializeVPC(options) {
     const routeTableId = createRouteTableResponse.RouteTable.RouteTableId;
     await SetResourceName(client, routeTableId, options.names.routeTable);
 
-    const createRouteResponse = await client.send(new CreateRouteCommand({
+    await client.send(new CreateRouteCommand({
         RouteTableId: routeTableId,
         DestinationCidrBlock: '0.0.0.0/0',
-        GatewayId: internetGatewayId
+        GatewayId: internetGatewayId,
     }));
 
-    const associateRouteTableResponse = await client.send(new AssociateRouteTableCommand({
+    await client.send(new AssociateRouteTableCommand({
         SubnetId: subnetId,
-        RouteTableId: routeTableId
+        RouteTableId: routeTableId,
     }));
 
     return {
@@ -108,37 +108,36 @@ async function InitializeVPC(options) {
         internetGatewayId,
         subnetId,
         securityGroupId,
-        routeTableId
-    }
+        routeTableId,
+    };
 }
 async function Initialize() {
     const run = await InitializeVPC({
         names: constants.names.run,
-        cidr: '10.0.0.0/16'
+        cidr: '10.0.0.0/16',
     });
     const client = new EC2Client();
-    await client.send(new DescribeVpcsCommand({})).then(async response => {
-        const defaultVpcs = response.Vpcs.filter(x => x.IsDefault);
+    await client.send(new DescribeVpcsCommand({})).then(async (response) => {
+        const defaultVpcs = response.Vpcs.filter((x) => x.IsDefault);
         if (!defaultVpcs || !defaultVpcs.length) {
             await client.send(new CreateDefaultVpcCommand());
         }
     });
-        //TODO pass client as arg to functions above
-    const modifyVpcAttributeResponse1 = await client.send(new ModifyVpcAttributeCommand({
+    // TODO pass client as arg to functions above
+    await client.send(new ModifyVpcAttributeCommand({
         VpcId: run.vpcId,
         EnableDnsSupport: {
-            Value: true
-        }
+            Value: true,
+        },
     }));
-    
-    
+
     await client.send(new CreateVpcEndpointCommand({
         VpcId: run.vpcId,
         ServiceName: `com.amazonaws.${globalConstants.region}.s3`,
         VpcEndpointType: 'Gateway',
     }))
-        .then(x => x.VpcEndpoint.VpcEndpointId)
-        .then(x => SetResourceName(client, x, constants.names.run.endpoint_s3));
+        .then((x) => x.VpcEndpoint.VpcEndpointId)
+        .then((x) => SetResourceName(client, x, constants.names.run.endpoint_s3));
 }
 
 module.exports = Initialize;

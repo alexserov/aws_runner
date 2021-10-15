@@ -14,42 +14,39 @@ const {
     DeleteRouteTableCommand,
     DisassociateRouteTableCommand,
     DeleteVpcEndpointsCommand,
-    DescribeVpcEndpointsCommand} = require('@aws-sdk/client-ec2');
+    DescribeVpcEndpointsCommand,
+} = require('@aws-sdk/client-ec2');
 
 const globalConstants = require('../global');
-
-
-
 
 async function Cleanup() {
     console.log('VPC Cleanup');
     const client = new EC2Client();
-    
+
     const filterSettings = {
         Filters: [
-            { Name: `tag:${globalConstants.tagName}`, Values: [globalConstants.tagValue] }
-        ]
+            { Name: `tag:${globalConstants.tagName}`, Values: [globalConstants.tagValue] },
+        ],
     };
 
     console.log('\tRemoving VPC endpoints');
     const describeVpcEndpointsResponse = await client.send(new DescribeVpcEndpointsCommand(filterSettings));
-    await Promise.all(describeVpcEndpointsResponse.VpcEndpoints?.map(async x => {
+    await Promise.all(describeVpcEndpointsResponse.VpcEndpoints?.map(async (x) => {
         await client.send(new DeleteVpcEndpointsCommand({
-            VpcEndpointIds: [x.VpcEndpointId]
+            VpcEndpointIds: [x.VpcEndpointId],
         }));
         return x.VpcEndpointId;
-    })).then(async x => {
-        if (!x.length)
-            return;
+    })).then(async (x) => {
+        if (!x.length) return;
         for (let i = 0; i < 30; i++) {
+            // eslint-disable-next-line no-await-in-loop
             const deletionResponse = await client.send(new DescribeVpcEndpointsCommand({
-                VpcEndpointIds: x
-            })).catch(x => {
-                //seems that endpoint was deleted and we got the InvalidVpcEndpointId.NotFound error
-                return {};
-            });
+                VpcEndpointIds: x,
+            })).catch(() => ({})); // seems that endpoint was deleted and we got the InvalidVpcEndpointId.NotFound error
+
             if (deletionResponse.VpcEndpoints && deletionResponse.VpcEndpoints.length) {
-                await new Promise(r => setTimeout(r, 30000));
+                // eslint-disable-next-line no-await-in-loop
+                await new Promise((r) => setTimeout(r, 30000));
                 console.log(`\t\twaiting (${i} of 30)`);
             } else {
                 break;
@@ -60,72 +57,74 @@ async function Cleanup() {
     console.log('\tRemoving Route tables');
 
     const describeRouteTablesResponse = await client.send(new DescribeRouteTablesCommand(filterSettings));
-    
-    await Promise.all(describeRouteTablesResponse.RouteTables?.map(async x => {
-        await Promise.all(x.Associations.map(async r => {
+
+    await Promise.all(describeRouteTablesResponse.RouteTables?.map(async (x) => {
+        await Promise.all(x.Associations.map(async (r) => {
             await client.send(new DisassociateRouteTableCommand({
-                AssociationId: r.RouteTableAssociationId
+                AssociationId: r.RouteTableAssociationId,
             })).catch(() => {
-                //do nothing
+                // do nothing
             });
         }));
-        await Promise.all(x.Routes.map(async r => {
+        await Promise.all(x.Routes.map(async (r) => {
             await client.send(new DeleteRouteCommand({
                 RouteTableId: x.RouteTableId,
-                DestinationCidrBlock: r.DestinationCidrBlock
+                DestinationCidrBlock: r.DestinationCidrBlock,
             })).catch(() => {
-                //do nothing
+                // do nothing
             });
         }));
-        await new Promise(r => setTimeout(r, 5000));
+        await new Promise((r) => setTimeout(r, 5000));
         await client.send(new DeleteRouteTableCommand({
-            RouteTableId: x.RouteTableId
+            RouteTableId: x.RouteTableId,
         }));
     }));
 
     console.log('\tRemoving Internet gateway');
     const describeGatewaysResponse = await client.send(new DescribeInternetGatewaysCommand(filterSettings));
-    await Promise.all(describeGatewaysResponse.InternetGateways?.map(async x => {
+    await Promise.all(describeGatewaysResponse.InternetGateways?.map(async (x) => {
         if (x.Attachments) {
-            await Promise.all(x.Attachments.map(async att => {
+            await Promise.all(x.Attachments.map(async (att) => {
                 await client.send(new DetachInternetGatewayCommand({
                     InternetGatewayId: x.InternetGatewayId,
-                    VpcId: att.VpcId
-                }))
+                    VpcId: att.VpcId,
+                }));
             }));
         }
         await client.send(new DeleteInternetGatewayCommand({
-            InternetGatewayId: x.InternetGatewayId
+            InternetGatewayId: x.InternetGatewayId,
         }));
     }));
 
     console.log('\tRemoving subnets');
     const describeSubnetsResponse = await client.send(new DescribeSubnetsCommand(filterSettings));
-    await Promise.all(describeSubnetsResponse.Subnets?.map(async x => {
+    await Promise.all(describeSubnetsResponse.Subnets?.map(async (x) => {
         await client.send(new DeleteSubnetCommand({
-            SubnetId: x.SubnetId
+            SubnetId: x.SubnetId,
         }));
     }));
 
     console.log('\tRemoving security groups');
     const describeGroupsResponse = await client.send(new DescribeSecurityGroupsCommand(filterSettings));
-    await Promise.all(describeGroupsResponse.SecurityGroups?.map(async x => {
+    await Promise.all(describeGroupsResponse.SecurityGroups?.map(async (x) => {
         await client.send(new DeleteSecurityGroupCommand({
-            GroupId: x.GroupId
+            GroupId: x.GroupId,
         }));
     }));
 
     console.log('\tRemoving VPCs');
     const describeVpcsResponse = await client.send(new DescribeVpcsCommand(filterSettings));
-    await Promise.all(describeVpcsResponse.Vpcs?.map(async x => {
+    await Promise.all(describeVpcsResponse.Vpcs?.map(async (x) => {
         for (let i = 0; i < 5; i++) {
+            // eslint-disable-next-line no-await-in-loop
             const deleteVpcResponse = await client.send(new DeleteVpcCommand({
-                VpcId: x.VpcId
+                VpcId: x.VpcId,
             })).then(() => true).catch(() => false);
             if (deleteVpcResponse) {
                 return;
             }
-            await new Promise(r => setTimeout(r, 5000));
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise((r) => setTimeout(r, 5000));
         }
     }));
 }

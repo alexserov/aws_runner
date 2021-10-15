@@ -1,9 +1,9 @@
-const express = require('express');
+const Express = require('express');
 const EC2Pool = require('./ec2pool');
 
 const internalPort = 32653;
 
-const app = new express();
+const app = new Express();
 const pool = new EC2Pool();
 
 app.post('/job_queued', async (req, res) => {

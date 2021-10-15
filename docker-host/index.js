@@ -1,4 +1,4 @@
-const express = require('express');
+const Express = require('express');
 const { exec } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 const { promisify } = require('util');
@@ -6,38 +6,43 @@ const axios = require('axios');
 
 const {
     REPO_FULLNAME, REPO_ROOT_TOKEN, WORKERS_COUNT,
-    WORKERS_LABEL, DOCKER_IMAGE, S_PORT, S_ENDPOINT } = require('./env');
+    WORKERS_LABEL, DOCKER_IMAGE, S_PORT, S_ENDPOINT,
+} = require('./env');
 
 const token = {
     value: '',
-    expires: new Date()
+    expires: new Date(),
 };
 let destroy = false;
 const containers = [];
 
-async function getTokenImpl(endpointPart, token) {
-     const now = new Date();
+async function getTokenImpl(endpointPart, currentToken) {
+    const now = new Date();
     now.setMinutes(now.getMinutes() + 1);
-    if (now > token.expires) {
+    if (now > currentToken.expires) {
         const response = await axios({
             url: `https://api.github.com/repos/${REPO_FULLNAME}/actions/runners/${endpointPart}`,
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${REPO_ROOT_TOKEN}`
-            }
+                Authorization: `Bearer ${REPO_ROOT_TOKEN}`,
+            },
         });
         if (response.status >= 200 && response.status < 300) {
-            token.value = response.data.token;
-            token.expires = response.data.expires_at;
+            return {
+                value: response.data.token,
+                expires: response.data.expires_at,
+            };
         }
     }
-    return token.value;
+    return currentToken.value;
 }
 
-async function getRegistrationToken(){
-    await getTokenImpl('registration-token', token);
+async function getRegistrationToken() {
+    const newToken = await getTokenImpl('registration-token', token);
+    token.value = newToken.value;
+    token.expires = newToken.expires;
     return token.value;
-};
+}
 
 async function getRemoveToken() {
     const result = { expires: new Date() };
@@ -45,27 +50,28 @@ async function getRemoveToken() {
     return result.value;
 }
 
-async function startWorker(){
+async function startWorker() {
     while (!destroy) {
-        const name = uuidv4().substr(0,8);
+        const name = uuidv4().substr(0, 8);
         containers.push(name);
         const data = {
             url: `https://github.com/${REPO_FULLNAME}`,
+            // eslint-disable-next-line no-await-in-loop
             token: await getRegistrationToken(),
             type: WORKERS_LABEL,
             name: `${WORKERS_LABEL}-${name}`,
             count: WORKERS_COUNT,
             port: S_PORT,
-        }
+        };
         const base64String = Buffer.from(JSON.stringify(data)).toString('base64');
+        // eslint-disable-next-line no-await-in-loop
         await promisify(exec)(`docker run --name ${name} ${DOCKER_IMAGE} ${base64String}`)
-            .catch(x => {
-                if (x.code === 137 || x.code === 143)
-                    return;
+            .catch((x) => {
+                if (x.code === 137 || x.code === 143) return;
                 throw (x);
             });
     }
-};
+}
 
 async function startWorkers() {
     await Promise.all([...Array(+WORKERS_COUNT).keys()].map(startWorker));
@@ -73,12 +79,12 @@ async function startWorkers() {
 
 const stopAndDestroy = async (containerName) => {
     try {
-        await promisify(exec)(`docker stop -t ${15*60} ${containerName}`);
+        await promisify(exec)(`docker stop -t ${15 * 60} ${containerName}`);
         await promisify(exec)(`docker rm ${containerName}`);
     } catch {
         console.log(`Runner ${containerName} does not exist`);
     }
-}
+};
 
 async function destroyRunners() {
     destroy = true;
@@ -88,7 +94,7 @@ async function destroyRunners() {
 function main() {
     let server;
 
-    const app = new express();
+    const app = new Express();
     app.post(`/${S_ENDPOINT}/`, async (req, res) => {
         await destroyRunners();
         res.set(200).send();
@@ -98,9 +104,9 @@ function main() {
         const result = await getRemoveToken();
         res.set(201).send(result);
     });
-    app.get('/listImages', async (req, res)=> {
+    app.get('/listImages', async (req, res) => {
         res.set(200).send(JSON.stringify(containers));
-    })
+    });
     process.on('SIGTERM', async () => {
         await destroyRunners();
         server.close();

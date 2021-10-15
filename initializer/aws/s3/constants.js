@@ -1,8 +1,9 @@
 const config = {
-  names: {
-  },
-  // eslint-disable-next-line no-unused-vars
-  apply(_externalConfig) { },
+    names: {
+        bucket: '',
+    },
+    // eslint-disable-next-line no-unused-vars
+    apply(_externalConfig) { },
 };
 
 const apply = (externalConfig) => Object.assign(config, externalConfig);

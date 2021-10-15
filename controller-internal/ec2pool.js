@@ -1,40 +1,41 @@
-const { EC2Client, RunInstancesCommand, AssociateInstanceEventWindowCommand, RequestSpotInstancesCommand, DescribeSpotPriceHistoryCommand, ModifyInstanceAttributeCommand, CreateTagsCommand, TerminateInstancesCommand, DescribeSpotInstanceRequestsCommand } = require('@aws-sdk/client-ec2');
-const { ImagebuilderClient, ListImageBuildVersionsCommand, ListImagesCommand, GetImageCommand, TagResourceCommand } = require('@aws-sdk/client-imagebuilder');
-const { request } = require('express');
+const {
+    EC2Client, RequestSpotInstancesCommand, DescribeSpotPriceHistoryCommand, CreateTagsCommand, TerminateInstancesCommand, DescribeSpotInstanceRequestsCommand,
+} = require('@aws-sdk/client-ec2');
+const {
+    ImagebuilderClient, ListImageBuildVersionsCommand, ListImagesCommand,
+} = require('@aws-sdk/client-imagebuilder');
 
 class EC2Pool {
-    requestedCount = 0;
-    actualCount = 0;
-    dockerImagesCount = 1;
-    maxPricePerHour = 0.05;
-    currentPricePerHour = 0;
-    actionQueue = [];
-    instanceStack = [];
-    lastInstanceId = 0;
-
     constructor() {
+        this.requestedCount = 0;
+        this.actualCount = 0;
+        this.dockerImagesCount = 1;
+        this.maxPricePerHour = 0.05;
+        this.currentPricePerHour = 0;
+        this.actionQueue = [];
+        this.instanceStack = [];
+        this.lastInstanceId = 0;
         setInterval(this.processQueue.bind(this), 1 * 1000);
     }
 
     increaseLoad() {
         this.actionQueue.push(1);
     }
+
     decreaseLoad() {
         this.actionQueue.push(-1);
     }
+
     async processQueue() {
-        if (!this.actionQueue.length)
-            return;
+        if (!this.actionQueue.length) return;
         const delta = this.actionQueue.reduce((p, q) => p + q, 0);
         this.requestedCount += delta;
         this.actionQueue.length = 0;
 
-        
         await this.tryRunInstanceIfNeeded();
 
         if (this.actualCount >= this.requestedCount + this.dockerImagesCount) {
             await this.tryTerminateInstance();
-            return;
         }
     }
 
@@ -42,44 +43,43 @@ class EC2Pool {
         const instanceCandidates = ['m5.large', 'm4.large'];
         let index = 0;
         while (this.requestedCount > this.actualCount) {
-            if (index >= instanceCandidates.length)
-                break;
+            if (index >= instanceCandidates.length) { break; }
+            // eslint-disable-next-line no-await-in-loop
             const instancesCount = await this.runInstance(instanceCandidates[index]);
             this.actualCount += instancesCount * this.dockerImagesCount;
             index++;
         }
     }
+
     async tryTerminateInstance() {
         const instancesToTerminate = Math.floor((this.actualCount - this.requestedCount) / this.dockerImagesCount);
-        for (let i = 0; i < instancesToTerminate; i++) {
-            await this.terminateInstance();
-        }
+        await Promise.all(new Array(instancesToTerminate).map(this.terminateInstance()));
     }
+
     async terminateInstance() {
         const lastInstance = this.instanceStack.pop();
-        if (!lastInstance)
-            return;
+        if (!lastInstance) { return; }
         const ec2Client = new EC2Client({});
 
         await ec2Client.send(new TerminateInstancesCommand({
-            InstanceIds: [lastInstance]
+            InstanceIds: [lastInstance],
         }));
     }
+
     async runInstance(instanceType) {
         const imagebuilderClient = new ImagebuilderClient({});
         const latestImageVersionArn = await imagebuilderClient.send(new ListImagesCommand({
             filters: [
-                { name: 'name', values: ['devextreme-ga-recipe-host'] }
-            ]
+                { name: 'name', values: ['devextreme-ga-recipe-host'] },
+            ],
         }))
-            .then(x => x.imageVersionList.sort((a, b) => new Date(a.dateCreated).valueOf() - new Date(b.dateCreated).valueOf()))
-            .then(x => x[0].arn);
+            .then((x) => x.imageVersionList.sort((a, b) => new Date(a.dateCreated).valueOf() - new Date(b.dateCreated).valueOf()))
+            .then((x) => x[0].arn);
         const latestImageBuild = await imagebuilderClient.send(new ListImageBuildVersionsCommand({
-            imageVersionArn: latestImageVersionArn
+            imageVersionArn: latestImageVersionArn,
         }))
-            .then(x => x.imageSummaryList.sort((a, b) => new Date(a.dateCreated).valueOf() - new Date(b.dateCreated).valueOf()))
-            .then(x => x[0]);
-        
+            .then((x) => x.imageSummaryList.sort((a, b) => new Date(a.dateCreated).valueOf() - new Date(b.dateCreated).valueOf()))
+            .then((x) => x[0]);
 
         const imageId = latestImageBuild.outputResources.amis[0].image;
         const ec2Client = new EC2Client({});
@@ -92,16 +92,15 @@ class EC2Pool {
             ProductDescriptions: ['Linux/UNIX (Amazon VPC)'],
             StartTime: yesterday,
             EndTime: today,
-        })).then(x => {
-            const prices = x.SpotPriceHistory.map(x => +x.SpotPrice);
+        })).then((x) => {
+            const prices = x.SpotPriceHistory.map((s) => +s.SpotPrice);
             return {
                 min: Math.min(...prices),
                 avg: prices.reduce((p, c) => p + c, 0) / prices.length,
-                max: Math.max(...prices)
+                max: Math.max(...prices),
             };
         });
-        if (this.currentPricePerHour + spotPrices.max > this.maxPricePerHour)
-            return 0;
+        if (this.currentPricePerHour + spotPrices.max > this.maxPricePerHour) { return 0; }
         const response = await ec2Client.send(new RequestSpotInstancesCommand({
             ImageId: imageId,
             SpotPrice: spotPrices.max,
@@ -110,7 +109,7 @@ class EC2Pool {
             LaunchSpecification: {
                 ImageId: imageId,
                 IamInstanceProfile: {
-                    Name: 'devextreme-ga-docker-host-profile'
+                    Name: 'devextreme-ga-docker-host-profile',
                 },
                 InstanceType: instanceType,
             },
@@ -119,38 +118,41 @@ class EC2Pool {
                     ResourceType: 'spot-instances-request',
                     Tags: [{
                         Key: 'dx-info',
-                        Value: 'devextreme-ga'
-                    }]
-                }
-            ]
+                        Value: 'devextreme-ga',
+                    }],
+                },
+            ],
         }));
         let requestInfos = response.SpotInstanceRequests;
-        while (requestInfos.find(x => !x.InstanceId)) {
-            await new Promise(resolve => setTimeout(resolve, 10000));
-            requestInfos = await ec2Client.send(new DescribeSpotInstanceRequestsCommand({
-                SpotInstanceRequestIds: requestInfos.map(x => x.SpotInstanceRequestId)
-            })).then(x => x.SpotInstanceRequests);
-            requestInfos = requestInfos.filter(x => x.Status.Code !== 'capacity-not-available');
+        while (requestInfos.find((x) => !x.InstanceId)) {
+            const ids = requestInfos.map((x) => x.SpotInstanceRequestId);
+            // eslint-disable-next-line no-await-in-loop
+            requestInfos = await new Promise((resolve) => setTimeout(resolve, 10000))
+                .then(() => ec2Client.send(new DescribeSpotInstanceRequestsCommand({
+                    SpotInstanceRequestIds: ids,
+                })))
+                .then((x) => x.SpotInstanceRequests);
+            requestInfos = requestInfos.filter((x) => x.Status.Code !== 'capacity-not-available');
+            // eslint-disable-next-line no-await-in-loop
         }
-        if (!requestInfos.length)
-            return 0;
-        await Promise.all(requestInfos.map(x => x.InstanceId).map(async (instance, index) => {
+        if (!requestInfos.length) { return 0; }
+        await Promise.all(requestInfos.map((x) => x.InstanceId).map(async (instance, index) => {
             await ec2Client.send(new CreateTagsCommand({
                 Resources: [instance],
                 Tags: [
-                    { Key: 'Name', Value: `devextreme-ga-runner-instance-${this.lastInstanceId+index}` },
-                    { Key: 'dx-info', Value: 'devextreme-ga' }
-                ]
-            }))
+                    { Key: 'Name', Value: `devextreme-ga-runner-instance-${this.lastInstanceId + index}` },
+                    { Key: 'dx-info', Value: 'devextreme-ga' },
+                ],
+            }));
         }));
         this.lastInstanceId += requestInfos.length;
 
-        const result = requestInfos.map(x => ({
+        const result = requestInfos.map((x) => ({
             id: x.InstanceId,
-            price: +x.SpotPrice
+            price: +x.SpotPrice,
         }));
         this.instanceStack.push(result);
-        this.currentPricePerHour += result.map(x => x.price).reduce((l, r) => l + r, 0);
+        this.currentPricePerHour += result.map((x) => x.price).reduce((l, r) => l + r, 0);
         return requestInfos.length;
     }
 }

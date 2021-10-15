@@ -16,13 +16,12 @@ async function InitializeRole(client, name, folder) {
 
         await Promise.all(readdirSync(join(__dirname, 'data', folder)).map(async (fullPolicyFileNameWithExtension) => {
             const policyFileName = basename(fullPolicyFileNameWithExtension, '.json');
-            if (policyFileName === 'trust-policy')
-                return;
+            if (policyFileName === 'trust-policy') return;
 
             await client.send(new PutRolePolicyCommand({
                 RoleName: role.RoleName,
                 PolicyDocument: readFileSync(join(__dirname, 'data', folder, `${policyFileName}.json`)).toString(),
-                PolicyName: `devextreme-ga-policy-${policyFileName}`
+                PolicyName: `devextreme-ga-policy-${policyFileName}`,
             }));
         }));
     });
@@ -34,13 +33,13 @@ async function InitializeRole(client, name, folder) {
 
     await client.send(new AddRoleToInstanceProfileCommand({
         InstanceProfileName: name.profile,
-        RoleName: name.role
+        RoleName: name.role,
     }));
 }
 
 async function Initialize() {
     console.log('IAM Initialization');
-    
+
     const client = new IAMClient();
 
     await InitializeRole(client, constants.names.imagebuilder, 'imagebuilder');

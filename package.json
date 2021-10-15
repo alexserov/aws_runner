@@ -1,0 +1,26 @@
+{
+  "name": "aws_runner",
+  "version": "1.0.0",
+  "description": "",
+  "main": "env.private.js",
+  "dependencies": {},
+  "devDependencies": {
+    "eslint": "^7.32.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-plugin-import": "^2.25.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexserov/aws_runner.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/alexserov/aws_runner/issues"
+  },
+  "homepage": "https://github.com/alexserov/aws_runner#readme"
+}

@@ -1,14 +1,13 @@
 const {
-    IAMClient, DeleteRoleCommand, DeleteRolePolicyCommand, ListRolePoliciesCommand, RemoveRoleFromInstanceProfileCommand, DeleteInstanceProfileCommand
+    IAMClient, DeleteRoleCommand, DeleteRolePolicyCommand, ListRolePoliciesCommand, RemoveRoleFromInstanceProfileCommand, DeleteInstanceProfileCommand,
 } = require('@aws-sdk/client-iam');
 
-const globalConstants = require('../global');
 const constants = require('./constants');
 
 async function CleanupRole(client, name) {
-    const catchNoEntity = x => {
+    const catchNoEntity = (x) => {
         if (x?.Code === 'NoSuchEntity') {
-            //okay
+            // okay
         } else {
             throw new Error('Unknown error code');
         }
@@ -16,29 +15,28 @@ async function CleanupRole(client, name) {
 
     await client.send(new RemoveRoleFromInstanceProfileCommand({
         InstanceProfileName: name.profile,
-        RoleName: name.role
+        RoleName: name.role,
     })).catch(catchNoEntity);
     await client.send(new DeleteInstanceProfileCommand({
-        InstanceProfileName: name.profile
+        InstanceProfileName: name.profile,
     })).catch(catchNoEntity);
     await client.send(new ListRolePoliciesCommand({
-        RoleName: name.role
-    })).catch(err => {
+        RoleName: name.role,
+    })).catch((err) => {
         if (err?.Code === 'NoSuchEntity') {
             return { PolicyNames: [] };
-        } else {
-            throw new Error('Unknown error code');
         }
+        throw new Error('Unknown error code');
     }).then(async (response) => {
         await Promise.all(response.PolicyNames.map(async (policy) => {
             await client.send(new DeleteRolePolicyCommand({
                 PolicyName: policy,
-                RoleName: name.role
+                RoleName: name.role,
             }));
         }));
-    })
+    });
     await client.send(new DeleteRoleCommand({
-        RoleName: name.role
+        RoleName: name.role,
     })).catch(catchNoEntity);
 }
 

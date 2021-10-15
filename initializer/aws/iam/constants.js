@@ -1,16 +1,23 @@
-module.exports = {
+const config = {
     names: {
         imagebuilder: {
-            role: 'devextreme-ga-imagebuilder-role',
-            profile: 'devextreme-ga-imagebuilder-profile'
+            role: '',
+            profile: '',
         },
         dockerHost: {
-            role: 'devextreme-ga-docker-host-role',
-            profile: 'devextreme-ga-docker-host-profile'
+            role: '',
+            profile: '',
         },
         controller: {
-            role: 'devextreme-ga-controller-role',
-            profile: 'devextreme-ga-controller-profile'
-        }
-    }
+            role: '',
+            profile: '',
+        },
+    },
+    // eslint-disable-next-line no-unused-vars
+    apply(_externalConfig) { },
 };
+
+const apply = (externalConfig) => Object.assign(config, externalConfig);
+config.apply = apply;
+
+module.exports = config;

@@ -1,5 +1,6 @@
 const { existsSync } = require('fs');
 const { resolve } = require('path');
+
 const exported = {
     ...{
         REPO_FULLNAME: process.env.REPO_FULLNAME,
@@ -10,6 +11,7 @@ const exported = {
         S_PORT: process.env.S_PORT,
         S_ENDPOINT: process.env.S_ENDPOINT,
     },
-    ...(existsSync(resolve(__dirname,'../env.private.js')) ? require('../env.private') : {})
+    // eslint-disable-next-line global-require
+    ...(existsSync(resolve(__dirname, '../env.private.js')) ? require('../env.private') : {}),
 };
 module.exports = exported;
