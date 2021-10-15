@@ -99,7 +99,7 @@ async function InitializeImage(options) {
             { componentArn: component.componentBuildVersionArn }
         ],
         parentImage: 'arn:aws:imagebuilder:eu-central-1:aws:image/ubuntu-server-20-lts-x86/x.x.x',
-        semanticVersion: today,
+        semanticVersion: '1.0.0',
         blockDeviceMappings: [
             {
                 deviceName: '/dev/sda1',
