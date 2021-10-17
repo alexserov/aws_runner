@@ -16,6 +16,10 @@ const config = {
             routeTable: '',
         },
     },
+    ports: {
+        controllerPublic: 1337,
+        controllerPrivate: 31337,
+    },
     // eslint-disable-next-line no-unused-vars
     apply(_externalConfig) { },
 };

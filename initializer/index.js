@@ -4,6 +4,7 @@ const imagebuilder = require('./initializer/image-builder');
 const iam = require('./initializer/iam');
 const globalConstants = require('./initializer/global');
 const builder = require('./builder');
+const runner = require('./runner');
 
 async function Cleanup(logCallback) {
     await imagebuilder.Cleanup(logCallback);
@@ -37,5 +38,8 @@ module.exports = {
     },
     async rebuild(config, logCallback) {
         await builder(config, logCallback);
+    },
+    async run(config, logCallback) {
+        await runner(config, logCallback);
     },
 };

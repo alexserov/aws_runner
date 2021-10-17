@@ -1,8 +1,9 @@
 const Express = require('express');
 const axios = require('axios');
+const config = require('../config');
 
-const publicPort = 31981;
-const internalPort = 32653;
+const publicPort = config.constants.vpc.ports.controllerPublic;
+const internalPort = config.constants.vpc.ports.controllerPrivate;
 const app = new Express();
 
 app.post('/', async (req, res) => {

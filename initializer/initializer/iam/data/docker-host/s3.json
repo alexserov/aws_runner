@@ -7,7 +7,7 @@
         "s3:GetObject"
       ],
       "Effect": "Allow",
-      "Resource": "arn:aws:s3:::devextreme-ga-configs/docker-host.tar.gz,arn:aws:s3:::devextreme-ga-configs/docker-host/aws-cli/config"
+      "Resource": "arn:aws:s3:::devextreme-ga-configs/docker-host/*"
     }
   ]
 }

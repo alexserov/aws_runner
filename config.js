@@ -1,11 +1,13 @@
 module.exports = {
     region: 'eu-central-1',
+    repositoryName: 'devexpress/DevExtreme',
     constants: {
         global: {
             tagName: 'dx-info',
             tagValue: 'devextreme-ga',
         },
         iam: {
+            secretId: 'devextreme-ga',
             names: {
                 imagebuilder: {
                     role: 'devextreme-ga-imagebuilder-role',
@@ -57,6 +59,10 @@ module.exports = {
                     endpoint_s3: 'devextreme-ga-routeTable-run-ep-s3',
                 },
             },
+            ports: {
+                controllerPublic: 31981,
+                controllerPrivate: 32653,
+            },
         },
         s3: {
             names: {
@@ -68,15 +74,22 @@ module.exports = {
                 repository: 'aws-runner',
             },
         },
+        ec2: {
+            names: {
+                instancePrefix: 'devextreme-ga-runner-instance',
+            },
+        },
     },
     machines: [
         {
             type: 'm5.large',
             dockerInstancesCount: 4,
+            label: 'ubuntu-20.04',
         },
         {
             type: 'm4.large',
             dockerInstancesCount: 4,
+            label: 'ubuntu-20.04',
         },
     ],
 };

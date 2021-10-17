@@ -1,12 +1,25 @@
 const {
     IAMClient, CreateRoleCommand, PutRolePolicyCommand, CreateInstanceProfileCommand, AddRoleToInstanceProfileCommand,
 } = require('@aws-sdk/client-iam');
+
+const { STSClient, GetCallerIdentityCommand } = require('@aws-sdk/client-sts');
 const { readdirSync, readFileSync } = require('fs');
 const { join, basename } = require('path');
 const globalConstants = require('../global');
 const constants = require('./constants');
 
-async function InitializeRole(client, name, folder, logCallback) {
+function performReplacements(data, replacements) {
+    if (!replacements) {
+        return data;
+    }
+    let result = data;
+    Object.keys(replacements).forEach((x) => {
+        result = result.replace(x, replacements[x]);
+    });
+    return result;
+}
+
+async function InitializeRole(client, name, folder, replacements, logCallback) {
     logCallback(`\tRole:(${name.role})`);
 
     await client.send(new CreateRoleCommand({
@@ -22,7 +35,7 @@ async function InitializeRole(client, name, folder, logCallback) {
 
             await client.send(new PutRolePolicyCommand({
                 RoleName: role.RoleName,
-                PolicyDocument: readFileSync(join(__dirname, 'data', folder, `${policyFileName}.json`)).toString(),
+                PolicyDocument: performReplacements(readFileSync(join(__dirname, 'data', folder, `${policyFileName}.json`)).toString(), replacements),
                 PolicyName: `devextreme-ga-policy-${policyFileName}`,
             }));
         }));
@@ -44,10 +57,15 @@ async function Initialize(logCallback) {
     logCallback('IAM Initialization');
 
     const client = new IAMClient();
+    const stsClient = new STSClient();
 
-    await InitializeRole(client, constants.names.imagebuilder, 'imagebuilder', logCallback);
-    await InitializeRole(client, constants.names.dockerHost, 'docker-host', logCallback);
-    await InitializeRole(client, constants.names.controller, 'controller', logCallback);
+    const accountId = await stsClient.send(new GetCallerIdentityCommand()).then((x) => x.Account);
+
+    await InitializeRole(client, constants.names.imagebuilder, 'imagebuilder', null, logCallback);
+    await InitializeRole(client, constants.names.dockerHost, 'docker-host', null, logCallback);
+    await InitializeRole(client, constants.names.controller, 'controller', {
+        AWS_SECRETMANAGER_RESOURCE_NAME: `arn:aws:secretsmanager:${globalConstants.region}:${accountId}:${constants.secretsId}`,
+    }, logCallback);
 }
 
 module.exports = Initialize;

@@ -5,49 +5,25 @@ const { promisify } = require('util');
 const axios = require('axios');
 
 const {
-    REPO_FULLNAME, REPO_ROOT_TOKEN, WORKERS_COUNT,
+    REPO_FULLNAME, WORKERS_COUNT,
     WORKERS_LABEL, DOCKER_IMAGE, S_PORT, S_ENDPOINT,
 } = require('./env');
 
-const token = {
-    value: '',
-    expires: new Date(),
-};
 let destroy = false;
 const containers = [];
 
-async function getTokenImpl(endpointPart, currentToken) {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() + 1);
-    if (now > currentToken.expires) {
-        const response = await axios({
-            url: `https://api.github.com/repos/${REPO_FULLNAME}/actions/runners/${endpointPart}`,
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${REPO_ROOT_TOKEN}`,
-            },
-        });
-        if (response.status >= 200 && response.status < 300) {
-            return {
-                value: response.data.token,
-                expires: response.data.expires_at,
-            };
-        }
-    }
-    return currentToken.value;
+function getTokenImpl(endpointPart) {
+    axios({
+        url: `${process.env.CONTROLLER_ADDRESS}/${endpointPart}`,
+        method: 'GET',
+    }).then((x) => x.data);
 }
 
-async function getRegistrationToken() {
-    const newToken = await getTokenImpl('registration-token', token);
-    token.value = newToken.value;
-    token.expires = newToken.expires;
-    return token.value;
+function getRegistrationToken() {
+    return getTokenImpl('request_registration_token');
 }
-
-async function getRemoveToken() {
-    const result = { expires: new Date() };
-    await getTokenImpl('remove-token', result);
-    return result.value;
+function getRemoveToken() {
+    return getTokenImpl('request_remove_token');
 }
 
 async function startWorker() {

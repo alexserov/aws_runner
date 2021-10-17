@@ -1,15 +1,15 @@
 const { spawn, execSync } = require('child_process');
 const { platform } = require('os');
 const path = require('path');
-const { initialize, rebuild } = require('./initializer/index');
+const { initialize, rebuild, run } = require('./initializer/index');
 const config = require('./config');
 
 async function main() {
     prepareConfig();
-    // await buildDocker();
+    await buildDocker();
     await initialize(config, logCallback);
-    // await rebuild(config, logCallback);
-    // await startListener();
+    await rebuild(config, logCallback);
+    await startListener();
 }
 
 function prepareConfig() {
@@ -72,7 +72,7 @@ async function spawnCommand(command, options, log) {
 }
 
 async function startListener() {
-    logCallback('not implemented');
+    await run(config, logCallback);
 }
 
 function logCallback(...args) {

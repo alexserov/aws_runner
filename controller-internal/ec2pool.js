@@ -4,12 +4,14 @@ const {
 const {
     ImagebuilderClient, ListImageBuildVersionsCommand, ListImagesCommand,
 } = require('@aws-sdk/client-imagebuilder');
+const { readFileSync } = require('fs');
+const { join } = require('path');
+const config = require('../config');
 
 class EC2Pool {
     constructor() {
         this.requestedCount = 0;
         this.actualCount = 0;
-        this.dockerImagesCount = 1;
         this.maxPricePerHour = 0.05;
         this.currentPricePerHour = 0;
         this.actionQueue = [];
@@ -19,41 +21,49 @@ class EC2Pool {
     }
 
     increaseLoad() {
-        this.actionQueue.push(1);
+        this.actionQueue += 1;
     }
 
     decreaseLoad() {
-        this.actionQueue.push(-1);
+        this.actionQueue -= 1;
     }
 
     async processQueue() {
-        if (!this.actionQueue.length) return;
-        const delta = this.actionQueue.reduce((p, q) => p + q, 0);
-        this.requestedCount += delta;
-        this.actionQueue.length = 0;
+        if (!this.actionQueue) return;
+        this.requestedCount += this.actionQueue;
+        this.actionQueue = 0;
 
         await this.tryRunInstanceIfNeeded();
-
-        if (this.actualCount >= this.requestedCount + this.dockerImagesCount) {
-            await this.tryTerminateInstance();
-        }
+        await this.tryTerminateInstanceIfNeeded();
     }
 
     async tryRunInstanceIfNeeded() {
-        const instanceCandidates = ['m5.large', 'm4.large'];
+        const instanceCandidates = config.machines;
         let index = 0;
         while (this.requestedCount > this.actualCount) {
             if (index >= instanceCandidates.length) { break; }
             // eslint-disable-next-line no-await-in-loop
             const instancesCount = await this.runInstance(instanceCandidates[index]);
-            this.actualCount += instancesCount * this.dockerImagesCount;
+            this.actualCount += instancesCount * instanceCandidates[index].dockerInstancesCount;
             index++;
         }
     }
 
-    async tryTerminateInstance() {
-        const instancesToTerminate = Math.floor((this.actualCount - this.requestedCount) / this.dockerImagesCount);
-        await Promise.all(new Array(instancesToTerminate).map(this.terminateInstance()));
+    async tryTerminateInstanceIfNeeded() {
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            if (!this.instanceStack.length) {
+                return;
+            }
+
+            const { dockerInstancesCount } = this.instanceStack[this.instanceStack.length - 1];
+            if (this.requestedCount + dockerInstancesCount <= this.actualCount) {
+                break;
+            }
+            const instancesToTerminate = Math.floor((this.actualCount - this.requestedCount) / this.dockerInstancesCount);
+            // eslint-disable-next-line no-await-in-loop
+            await Promise.all(new Array(instancesToTerminate).map(this.terminateInstance()));
+        }
     }
 
     async terminateInstance() {
@@ -66,11 +76,29 @@ class EC2Pool {
         }));
     }
 
-    async runInstance(instanceType) {
+    // eslint-disable-next-line class-methods-use-this
+    patchUserData(data, instanceMetadata) {
+        const replacements = {
+            REPO_FULLNAME_PLACEHOLDER: config.repositoryName,
+            WORKERS_COUNT_PLACEHOLDER: instanceMetadata.dockerInstancesCount,
+            WORKERS_LABEL_PLACEHOLDER: instanceMetadata.label,
+            AWS_ACCOUNT_ID_PLACEHOLDER: process.env.EC2_ACCOUNT,
+            AWS_REGION_PLACEHOLDER: process.env.EC2_REGION,
+            DOCKER_REPO_NAME_PLACEHOLDER: config.constants.ecr.names.repository,
+            CONTROLLER_ADDRESS_PLACEHOLDER: process.env.CONTROLLER_ADDRESS,
+        };
+        let result = data;
+        Object.keys(data).forEach((x) => {
+            result = result.replace(x, replacements[x]);
+        });
+        return result;
+    }
+
+    async runInstance(instanceMetadata) {
         const imagebuilderClient = new ImagebuilderClient({});
         const latestImageVersionArn = await imagebuilderClient.send(new ListImagesCommand({
             filters: [
-                { name: 'name', values: ['devextreme-ga-recipe-host'] },
+                { name: 'name', values: [config.constants.imagebuilder.names.host.imageRecipe] },
             ],
         }))
             .then((x) => x.imageVersionList.sort((a, b) => new Date(a.dateCreated).valueOf() - new Date(b.dateCreated).valueOf()))
@@ -88,7 +116,7 @@ class EC2Pool {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const spotPrices = await ec2Client.send(new DescribeSpotPriceHistoryCommand({
-            InstanceTypes: [instanceType],
+            InstanceTypes: [instanceMetadata.type],
             ProductDescriptions: ['Linux/UNIX (Amazon VPC)'],
             StartTime: yesterday,
             EndTime: today,
@@ -104,21 +132,22 @@ class EC2Pool {
         const response = await ec2Client.send(new RequestSpotInstancesCommand({
             ImageId: imageId,
             SpotPrice: spotPrices.max,
-            InstanceCount: Math.ceil((this.requestedCount - this.actualCount) / this.dockerImagesCount),
+            InstanceCount: Math.ceil((this.requestedCount - this.actualCount) / instanceMetadata.dockerInstancesCount),
             Type: 'one-time',
             LaunchSpecification: {
                 ImageId: imageId,
+                UserData: this.patchUserData(readFileSync(join(__dirname, 'startupScripts/ubuntu.sh')).toString(), instanceMetadata),
                 IamInstanceProfile: {
-                    Name: 'devextreme-ga-docker-host-profile',
+                    Name: config.constants.iam.names.dockerHost.profile,
                 },
-                InstanceType: instanceType,
+                InstanceType: instanceMetadata.type,
             },
             TagSpecifications: [
                 {
                     ResourceType: 'spot-instances-request',
                     Tags: [{
-                        Key: 'dx-info',
-                        Value: 'devextreme-ga',
+                        Key: config.constants.global.tagName,
+                        Value: config.constants.global.tagValue,
                     }],
                 },
             ],
@@ -140,8 +169,8 @@ class EC2Pool {
             await ec2Client.send(new CreateTagsCommand({
                 Resources: [instance],
                 Tags: [
-                    { Key: 'Name', Value: `devextreme-ga-runner-instance-${this.lastInstanceId + index}` },
-                    { Key: 'dx-info', Value: 'devextreme-ga' },
+                    { Key: 'Name', Value: `${config.constants.ec2.names.instancePrefix}-${this.lastInstanceId + index}` },
+                    { Key: config.constants.global.tagName, Value: config.constants.global.tagValue },
                 ],
             }));
         }));
@@ -150,6 +179,7 @@ class EC2Pool {
         const result = requestInfos.map((x) => ({
             id: x.InstanceId,
             price: +x.SpotPrice,
+            dockerInstancesCount: instanceMetadata.dockerInstancesCount,
         }));
         this.instanceStack.push(result);
         this.currentPricePerHour += result.map((x) => x.price).reduce((l, r) => l + r, 0);

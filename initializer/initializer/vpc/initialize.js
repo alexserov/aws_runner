@@ -72,20 +72,6 @@ async function InitializeVPC(options, logCallback) {
     const securityGroupId = createSecurityGroupResponse.GroupId;
     SetResourceName(client, securityGroupId, options.names.securityGroup);
 
-    await client.send(new AuthorizeSecurityGroupIngressCommand({
-        GroupId: securityGroupId,
-        IpPermissions: [
-            {
-                IpProtocol: 'tcp',
-                ToPort: 22,
-                FromPort: 22,
-                IpRanges: [
-                    { CidrIp: '0.0.0.0/0' },
-                ],
-            },
-        ],
-    }));
-
     const createRouteTableResponse = await client.send(new CreateRouteTableCommand({
         VpcId: vpcId,
     }));
@@ -123,7 +109,6 @@ async function Initialize(logCallback) {
             await client.send(new CreateDefaultVpcCommand());
         }
     });
-    // TODO pass client as arg to functions above
     await client.send(new ModifyVpcAttributeCommand({
         VpcId: run.vpcId,
         EnableDnsSupport: {
@@ -138,6 +123,28 @@ async function Initialize(logCallback) {
     }))
         .then((x) => x.VpcEndpoint.VpcEndpointId)
         .then((x) => SetResourceName(client, x, constants.names.run.endpoint_s3));
+
+    await client.send(new AuthorizeSecurityGroupIngressCommand({
+        GroupId: run.securityGroupId,
+        IpPermissions: [
+            {
+                IpProtocol: 'tcp',
+                ToPort: constants.ports.controllerPublic,
+                FromPort: constants.ports.controllerPublic,
+                IpRanges: [
+                    { CidrIp: '0.0.0.0/0' },
+                ],
+            },
+            {
+                IpProtocol: 'tcp',
+                ToPort: 443,
+                FromPort: 443,
+                IpRanges: [
+                    { CidrIp: '0.0.0.0/0' },
+                ],
+            },
+        ],
+    }));
 }
 
 module.exports = Initialize;

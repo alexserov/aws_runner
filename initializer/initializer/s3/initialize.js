@@ -9,7 +9,6 @@ const constants = require('./constants');
 
 async function Initialize(logCallback) {
     logCallback('S3 Initialization');
-    // # TODO: manage access
     const client = new S3Client();
 
     await client.send(new CreateBucketCommand({
