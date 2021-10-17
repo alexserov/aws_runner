@@ -20,13 +20,13 @@ async function Initialize(logCallback) {
 
 function Apply(config) {
     globalConstants.region = config.region;
-    globalConstants.tagValue = config.tagValue;
-    globalConstants.tagName = config.tagName;
+    globalConstants.tagValue = config.constants.global.tagValue;
+    globalConstants.tagName = config.constants.global.tagName;
 
-    imagebuilder.constants.apply(config);
-    s3.constants.apply(config);
-    vpc.constants.apply(config);
-    iam.constants.apply(config);
+    imagebuilder.constants.apply(config.constants.imagebuilder);
+    s3.constants.apply(config.constants.s3);
+    vpc.constants.apply(config.constants.vpc);
+    iam.constants.apply(config.constants.iam);
 }
 
 module.exports = {

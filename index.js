@@ -1,14 +1,13 @@
 const { spawn, execSync } = require('child_process');
 const { platform } = require('os');
 const path = require('path');
-const fs = require('fs');
 const { initialize, rebuild } = require('./initializer/index');
 const config = require('./config');
 
 async function main() {
     prepareConfig();
-    await buildDocker();
-    // await initialize(config, logCallback);
+    // await buildDocker();
+    await initialize(config, logCallback);
     // await rebuild(config, logCallback);
     // await startListener();
 }

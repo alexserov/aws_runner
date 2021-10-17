@@ -18,8 +18,7 @@ const getTagsArray = (name) => {
     ];
 };
 
-module.exports = {
-    ...constants,
-    getTagsObject,
-    getTagsArray,
-};
+constants.getTagsObject = getTagsObject;
+constants.getTagsArray = getTagsArray;
+
+module.exports = constants;

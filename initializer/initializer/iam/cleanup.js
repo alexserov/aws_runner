@@ -9,11 +9,11 @@ async function CleanupRole(client, name, logCallback) {
         if (x?.Code === 'NoSuchEntity') {
             // okay
         } else {
-            throw new Error('Unknown error code');
+            throw new Error(`Unknown error code\r\n: ${x}`);
         }
     };
 
-    logCallback(`\t${name}`);
+    logCallback(`\tP:(${name.profile}) R:(${name.role})`);
     await client.send(new RemoveRoleFromInstanceProfileCommand({
         InstanceProfileName: name.profile,
         RoleName: name.role,
@@ -45,9 +45,9 @@ async function Cleanup(logCallback) {
     logCallback('IAM Cleanup');
     const client = new IAMClient();
 
-    await CleanupRole(client, constants.names.imagebuilder);
-    await CleanupRole(client, constants.names.dockerHost);
-    await CleanupRole(client, constants.names.controller);
+    await CleanupRole(client, constants.names.imagebuilder, logCallback);
+    await CleanupRole(client, constants.names.dockerHost, logCallback);
+    await CleanupRole(client, constants.names.controller, logCallback);
 }
 
 module.exports = Cleanup;

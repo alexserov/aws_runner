@@ -7,7 +7,7 @@ const globalConstants = require('../global');
 const constants = require('./constants');
 
 async function InitializeRole(client, name, folder, logCallback) {
-    logCallback(`\t${name}`);
+    logCallback(`\tRole:(${name.role})`);
 
     await client.send(new CreateRoleCommand({
         RoleName: name.role,
@@ -27,6 +27,7 @@ async function InitializeRole(client, name, folder, logCallback) {
             }));
         }));
     });
+    logCallback(`\tProfile:(${name.profile})`);
     await client.send(new CreateInstanceProfileCommand({
         InstanceProfileName: name.profile,
         Path: '/',
@@ -44,9 +45,9 @@ async function Initialize(logCallback) {
 
     const client = new IAMClient();
 
-    await InitializeRole(client, constants.names.imagebuilder, 'imagebuilder');
-    await InitializeRole(client, constants.names.dockerHost, 'docker-host');
-    await InitializeRole(client, constants.names.controller, 'controller');
+    await InitializeRole(client, constants.names.imagebuilder, 'imagebuilder', logCallback);
+    await InitializeRole(client, constants.names.dockerHost, 'docker-host', logCallback);
+    await InitializeRole(client, constants.names.controller, 'controller', logCallback);
 }
 
 module.exports = Initialize;

@@ -17,7 +17,10 @@ async function Cleanup(logCallback) {
 
     await client.send(new ListObjectVersionsCommand({
         Bucket: constants.names.bucket,
-    })).then(async (versions) => {
+    })).catch((err) => {
+        logCallback(`\t${err.Code}`);
+        return {};
+    }).then(async (versions) => {
         if (versions.DeleteMarkers) {
             await Promise.all(versions.DeleteMarkers.map((x) => client.send(new DeleteObjectCommand({
                 Bucket: constants.names.bucket,
@@ -28,7 +31,7 @@ async function Cleanup(logCallback) {
     });
     await client.send(new ListObjectVersionsCommand({
         Bucket: constants.names.bucket,
-    })).then(async (versions) => {
+    })).catch(() => ({})).then(async (versions) => {
         if (versions.Versions) {
             await Promise.all(versions.Versions.map((x) => client.send(new DeleteObjectCommand({
                 Bucket: constants.names.bucket,
@@ -40,7 +43,7 @@ async function Cleanup(logCallback) {
 
     await client.send(new DeleteBucketCommand({
         Bucket: constants.names.bucket,
-    }));
+    })).catch(() => { });
 }
 
 module.exports = Cleanup;
