@@ -14,7 +14,7 @@ module.exports = async function rebuild(config, logCallback) {
         .then((x) => x.filter((z) => z.tags[config.constants.global.tagName] === config.constants.global.tagValue));
 
     const buildVersions = await Promise.all(pipelines.map((x) => client.send(new StartImagePipelineExecutionCommand({
-        imagePipelineArn: x,
+        imagePipelineArn: x.arn,
     })).then((r) => r.imageBuildVersionArn)));
 
     const lastLogTimes = {};
@@ -32,7 +32,7 @@ module.exports = async function rebuild(config, logCallback) {
         }
         await new Promise((resolve) => setTimeout(resolve, 10000));
 
-        buildVersionInfos.map(async (info) => {
+        await buildVersionInfos.map(async (info, index) => {
             const { name } = info;
             const lastLogTime = lastLogTimes[name] ?? new Date().valueOf();
 
@@ -44,10 +44,14 @@ module.exports = async function rebuild(config, logCallback) {
             }))
                 .then((x) => x.events)
                 .catch(() => []);
-            logs.forEach((x) => {
-                logCallback(new Date(x.timestamp), x.message);
-                lastLogTimes[name] = x.timestamp;
-            });
+            if (!logs.length) {
+                lastLogTimes[name] = new Date().valueOf();
+            } else {
+                logs.forEach((x) => {
+                    logCallback(new Date(x.timestamp), `[IMG#${index}] ${x.message}`);
+                    lastLogTimes[name] = x.timestamp;
+                });
+            }
         });
     }
 };
