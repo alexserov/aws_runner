@@ -1,8 +1,9 @@
 const { spawn, execSync } = require('child_process');
 const { platform } = require('os');
+const path = require('path');
+const fs = require('fs');
 const { initialize, rebuild } = require('./initializer/index');
 const config = require('./config');
-const { join } = require('path');
 
 async function main() {
     prepareConfig();
@@ -18,27 +19,50 @@ function prepareConfig() {
 }
 
 async function buildDocker() {
-    let command;
-    let options;
-    logCallback('Building docker images');
-    if (platform() === 'win32') {
-        command = './build.ps1';
-        options = { shell: 'powershell.exe' };
-    } else {
-        command = './build.sh';
-        options = { shell: '/bin/bash' };
-    }
-    options.env = {
-        AWS_ACCOUNT_ID: config.AWS_ACCOUNT_ID,
-        AWS_REGION: config.region,
-        DOCKER_REPO_NAME: config.constants.ecr.names.repository,
+    const dockerOptions = {
+        cwd: path.join(__dirname, 'docker'),
+        env: {
+            ...process.env,
+            AWS_ACCOUNT_ID: config.AWS_ACCOUNT_ID,
+            AWS_REGION: config.region,
+            DOCKER_REPO_NAME: config.constants.ecr.names.repository,
+        },
+        shell: platform() === 'win32' ? 'cmd.exe' : '/bin/bash',
     };
 
-    await spawnCommand(command, options, logCallback);
+    logCallback('Building docker images');
+    await spawnCommand(
+        'docker compose build --progress plain',
+        dockerOptions,
+        logCallback,
+    );
+
+    logCallback('AWS Login');
+    if (platform() === 'win32') {
+        await spawnCommand(
+            `(Get-ECRLoginCommand).Password | docker login --username AWS --password-stdin ${config.AWS_ACCOUNT_ID}.dkr.ecr.${config.region}.amazonaws.com`,
+            { shell: 'powershell.exe' },
+            logCallback,
+        );
+    } else {
+        await spawnCommand(
+            `aws ecr get-login-password --region ${config.region} | docker login --username AWS --password-stdin ${config.AWS_ACCOUNT_ID}.dkr.ecr.${config.region}.amazonaws.com`,
+            { shell: '/bin/bash' },
+            logCallback,
+        );
+    }
+
+    logCallback('Push');
+
+    await spawnCommand(
+        'docker compose push',
+        dockerOptions,
+        logCallback,
+    );
 }
 async function spawnCommand(command, options, log) {
     await new Promise((resolve) => {
-        const ls = spawn(command, options);
+        const ls = spawn(command, { ...options, windowsHide: true });
         ls.stdout.on('data', (data) => log(`\t${data.toString()}`));
         ls.stderr.on('data', (data) => log(`\t${data.toString()}`));
         ls.on('exit', (code) => {
@@ -59,8 +83,8 @@ function logCallback(...args) {
         message = date;
         date = new Date();
     }
-    if (/^[\t\n\s]*$/.test(message))
-        return;
+    if (/^[\t\n\s]*$/.test(message)) { return; }
+    message = message.replace(/\\n/g, `\\n[${date}]: \\t`);
     // eslint-disable-next-line no-console
     console.log(`[${date}]: ${message}`);
 }
