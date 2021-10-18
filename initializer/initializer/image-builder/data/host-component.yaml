@@ -20,6 +20,12 @@ phases:
         inputs:
           commands:
             - aws s3 cp s3://devextreme-ga-configs/docker-host/aws-cli/config /home/ubuntu/.aws/config
+      - name: DownloadUtilites
+        action: ExecuteBash
+        inputs:
+          commands:
+            - aws s3 cp s3://devextreme-ga-configs/docker-host/docker-host /home/ubuntu/docker-host --recursive
+            - aws s3 cp s3://devextreme-ga-configs/controller/config.js /home/ubuntu/config.js
       - name: SetAwsFolderOwner
         action: SetFolderOwner
         inputs:

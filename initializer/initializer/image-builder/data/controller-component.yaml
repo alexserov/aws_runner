@@ -20,6 +20,13 @@ phases:
         inputs:
           commands:
             - aws s3 cp s3://devextreme-ga-configs/controller/aws-cli/config /home/ubuntu/.aws/config
+      - name: DownloadUtilites
+        action: ExecuteBash
+        inputs:
+          commands:
+            - aws s3 cp s3://devextreme-ga-configs/controller/controller-internal /home/ubuntu/controller-internal --recursive
+            - aws s3 cp s3://devextreme-ga-configs/controller/controller-internal /home/ubuntu/controller-public --recursive
+            - aws s3 cp s3://devextreme-ga-configs/controller/config.js /home/ubuntu/config.js
       - name: SetAwsFolderOwner
         action: SetFolderOwner
         inputs:

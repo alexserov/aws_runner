@@ -2,10 +2,33 @@ const {
     S3Client,
     CreateBucketCommand,
     PutBucketTaggingCommand,
+    PutObjectCommand,
 } = require('@aws-sdk/client-s3');
+const { readFileSync } = require('fs');
+const glob = require('glob');
+const path = require('path');
 
 const globalConstants = require('../global');
 const constants = require('./constants');
+
+async function uploadRootFolder(client, bucketSubdir, folderName) {
+    const rootFolder = path.resolve(__dirname, '../../../');
+    const fileNames = [];
+    glob(path.join(rootFolder, folderName), (err, files) => fileNames.push(files.filter((x) => !x.includes('node_modules'))));
+    await Promise.all(fileNames.map((x) => client.send(new PutObjectCommand({
+        Bucket: constants.names.bucket,
+        Key: `${bucketSubdir}/${path.relative(x, rootFolder)}`,
+        Body: readFileSync(x).toString(),
+    }))));
+}
+async function uploadRootFile(client, bucketSubdir, fileName) {
+    const rootFolder = path.resolve(__dirname, '../../../');
+    await client.send(new PutObjectCommand({
+        Bucket: constants.names.bucket,
+        Key: `${bucketSubdir}/${fileName}`,
+        Body: readFileSync(path.join(rootFolder, fileName)).toString(),
+    }));
+}
 
 async function Initialize(logCallback) {
     logCallback('S3 Initialization');
@@ -35,6 +58,13 @@ async function Initialize(logCallback) {
             ],
         },
     }));
+
+    await uploadRootFolder(client, 'controller', 'controller-internal');
+    await uploadRootFolder(client, 'controller', 'controller-public');
+    await uploadRootFile(client, 'controller', 'config.js');
+
+    await uploadRootFolder(client, 'docker-host', 'docker-host');
+    await uploadRootFile(client, 'docker-host', 'config.js');
 }
 
 module.exports = Initialize;
