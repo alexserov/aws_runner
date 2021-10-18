@@ -64,7 +64,7 @@ async function Initialize(logCallback) {
     await InitializeRole(client, constants.names.imagebuilder, 'imagebuilder', null, logCallback);
     await InitializeRole(client, constants.names.dockerHost, 'docker-host', null, logCallback);
     await InitializeRole(client, constants.names.controller, 'controller', {
-        AWS_SECRETMANAGER_RESOURCE_NAME: `arn:aws:secretsmanager:${globalConstants.region}:${accountId}:${constants.secretsId}`,
+        AWS_SECRETMANAGER_RESOURCE_NAME: `arn:aws:secretsmanager:${globalConstants.region}:${accountId}:${constants.secretId}`,
     }, logCallback);
 }
 

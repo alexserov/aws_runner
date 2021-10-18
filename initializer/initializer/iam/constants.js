@@ -1,5 +1,5 @@
 const config = {
-    secretsId: '',
+    secretId: '',
     names: {
         imagebuilder: {
             role: '',
