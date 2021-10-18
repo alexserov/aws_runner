@@ -13,11 +13,18 @@ const constants = require('./constants');
 
 async function uploadRootFolder(client, bucketSubdir, folderName) {
     const rootFolder = path.resolve(__dirname, '../../../');
-    const fileNames = [];
-    glob(path.join(rootFolder, folderName), (err, files) => fileNames.push(files.filter((x) => !x.includes('node_modules'))));
+    const fileNames = await new Promise((resolve) => {
+        glob(
+            path.join(rootFolder, folderName, '**/*'),
+            (err, files) => {
+                resolve(files.filter((x) => !x.includes('node_modules')));
+            },
+        );
+    });
+
     await Promise.all(fileNames.map((x) => client.send(new PutObjectCommand({
         Bucket: constants.names.bucket,
-        Key: `${bucketSubdir}/${path.relative(x, rootFolder)}`,
+        Key: path.normalize(`${bucketSubdir}/${path.relative(rootFolder, x)}`).replace(/\\/g, '/'),
         Body: readFileSync(x).toString(),
     }))));
 }
