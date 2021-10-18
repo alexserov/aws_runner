@@ -98,7 +98,8 @@ class EC2Pool {
         Object.keys(data).forEach((x) => {
             result = result.replace(x, replacements[x]);
         });
-        return result;
+
+        return Buffer.from(result).toString('base64');
     }
 
     async runInstance(instanceMetadata) {

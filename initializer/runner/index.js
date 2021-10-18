@@ -47,7 +47,7 @@ async function run() {
         ImageId: imageId,
         SecurityGroupIds: [securityGroup.GroupId],
         SubnetId: subnet.SubnetId,
-        UserData: readFileSync(join(__dirname, 'startup.sh')).toString(),
+        UserData: readFileSync(join(__dirname, 'startup.sh')).toString('base64'),
     })).then((x) => x.Instances[0]);
 
     const allocatedAddress = await ec2Client.send(new DescribeAddressesCommand({

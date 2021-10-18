@@ -1,7 +1,7 @@
 module.exports = {
     region: 'eu-central-1',
     repository: {
-        name: 'devexpress/DevExtreme',
+        name: 'alexserov/gatest',
         isOrganization: false,
     },
     constants: {

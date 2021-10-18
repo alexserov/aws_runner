@@ -8,6 +8,7 @@ const {
 } = require('@aws-sdk/client-cloudwatch-logs');
 
 module.exports = async function rebuild(config, logCallback) {
+    logCallback('Rebuild AMIs');
     const client = new ImagebuilderClient({});
     const pipelines = await client.send(new ListImagePipelinesCommand({}))
         .then((x) => x.imagePipelineList)
@@ -49,7 +50,10 @@ module.exports = async function rebuild(config, logCallback) {
                 lastLogTimes[name] = new Date().valueOf();
             } else {
                 logs.forEach((x) => {
-                    logCallback(new Date(x.timestamp), `[IMG#${index}] ${x.message}`);
+                    if (lastLogTimes[name] === x.timestamp) {
+                        return;
+                    }
+                    logCallback(new Date(x.timestamp), `[IMG#${index}(${info?.state?.status})] ${x.message}`);
                     lastLogTimes[name] = x.timestamp;
                 });
             }
