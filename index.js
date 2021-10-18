@@ -8,8 +8,8 @@ async function main() {
     prepareConfig();
     await buildDocker();
     await initialize(config, logCallback);
-    await rebuild(config, logCallback);
-    await startListener();
+    // await rebuild(config, logCallback);
+    // await startListener();
 }
 
 function prepareConfig() {

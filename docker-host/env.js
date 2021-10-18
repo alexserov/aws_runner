@@ -8,7 +8,6 @@ const exported = {
         WORKERS_LABEL: process.env.WORKERS_LABEL,
         DOCKER_IMAGE: `${process.env.AWS_ACCOUNT_ID}.dkr.ecr.${process.env.AWS_REGION}.amazonaws.com/${process.env.DOCKER_REPO_NAME}:runner`,
         S_PORT: process.env.S_PORT,
-        S_ENDPOINT: process.env.S_ENDPOINT,
     },
     // eslint-disable-next-line global-require
     ...(existsSync(resolve(__dirname, '../env.private.js')) ? require('../env.private') : {}),

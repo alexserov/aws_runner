@@ -79,7 +79,7 @@ class EC2Pool {
     // eslint-disable-next-line class-methods-use-this
     patchUserData(data, instanceMetadata) {
         const replacements = {
-            REPO_FULLNAME_PLACEHOLDER: config.repositoryName,
+            REPO_FULLNAME_PLACEHOLDER: config.repository.name,
             WORKERS_COUNT_PLACEHOLDER: instanceMetadata.dockerInstancesCount,
             WORKERS_LABEL_PLACEHOLDER: instanceMetadata.label,
             AWS_ACCOUNT_ID_PLACEHOLDER: process.env.EC2_ACCOUNT,

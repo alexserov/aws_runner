@@ -1,13 +1,16 @@
 module.exports = {
     region: 'eu-central-1',
-    repositoryName: 'devexpress/DevExtreme',
+    repository: {
+        name: 'devexpress/DevExtreme',
+        isOrganization: false,
+    },
     constants: {
         global: {
             tagName: 'dx-info',
             tagValue: 'devextreme-ga',
         },
         iam: {
-            secretId: 'devextreme-ga',
+            secretId: 'devextreme-ga-tokens',
             names: {
                 imagebuilder: {
                     role: 'devextreme-ga-imagebuilder-role',

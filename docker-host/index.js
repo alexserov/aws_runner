@@ -6,7 +6,7 @@ const axios = require('axios');
 
 const {
     REPO_FULLNAME, WORKERS_COUNT,
-    WORKERS_LABEL, DOCKER_IMAGE, S_PORT, S_ENDPOINT,
+    WORKERS_LABEL, DOCKER_IMAGE,
 } = require('./env');
 
 let destroy = false;
@@ -37,7 +37,7 @@ async function startWorker() {
             type: WORKERS_LABEL,
             name: `${WORKERS_LABEL}-${name}`,
             count: WORKERS_COUNT,
-            port: S_PORT,
+            port: 35123,
         };
         const base64String = Buffer.from(JSON.stringify(data)).toString('base64');
         // eslint-disable-next-line no-await-in-loop
@@ -71,7 +71,7 @@ function main() {
     let server;
 
     const app = new Express();
-    app.post(`/${S_ENDPOINT}/`, async (req, res) => {
+    app.post('/kill', async (req, res) => {
         await destroyRunners();
         res.set(200).send();
         server.close();
@@ -87,7 +87,7 @@ function main() {
         await destroyRunners();
         server.close();
     });
-    server = app.listen(S_PORT, startWorkers());
+    server = app.listen(35123, startWorkers());
 }
 
 main();

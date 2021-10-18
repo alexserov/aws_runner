@@ -7,7 +7,7 @@ const internalPort = config.constants.vpc.ports.controllerPrivate;
 
 const app = new Express();
 const pool = new EC2Pool();
-const secrets = new Secrets(config.repositoryName, config.constants.iam.secretId);
+const secrets = new Secrets(config.repository.name, config.constants.iam.secretId);
 
 app.post('/job_queued', async (req, res) => {
     pool.increaseLoad();

@@ -2,8 +2,8 @@ const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client
 const axios = require('axios');
 
 class Secrets {
-    constructor(repositoryName, secretArn) {
-        this.repositoryName = repositoryName;
+    constructor(repository, secretArn) {
+        this.repository = repository;
         this.secretArn = secretArn;
         this.token = {
             value: '',
@@ -24,8 +24,12 @@ class Secrets {
         const now = new Date();
         now.setMinutes(now.getMinutes() + 1);
         if (now > currentToken.expires) {
+            const requestUrl = this.repository.isOrganization
+                ? `https://api.github.com/orgs/${this.repository.name}/actions/runners/${endpointPart}`
+                : `https://api.github.com/repos/${this.repository.name}/actions/runners/${endpointPart}`;
+
             const response = await axios({
-                url: `https://api.github.com/repos/${this.repositoryName}/actions/runners/${endpointPart}`,
+                url: requestUrl,
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${await this.getGithubToken()}`,
