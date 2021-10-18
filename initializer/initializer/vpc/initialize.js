@@ -14,6 +14,8 @@ const {
     CreateVpcEndpointCommand,
     DescribeVpcsCommand,
     CreateDefaultVpcCommand,
+    AllocateAddressCommand,
+    DescribeAddressesCommand,
 } = require('@aws-sdk/client-ec2');
 
 const globalConstants = require('../global');
@@ -145,6 +147,18 @@ async function Initialize(logCallback) {
             },
         ],
     }));
+
+    const allocatedAddresses = await client.send(new DescribeAddressesCommand({
+        Filters: [
+            { Name: `tag:${globalConstants.tagName}`, Values: [globalConstants.tagValue] },
+        ],
+    })).then((x) => x.Addresses);
+    if (!allocatedAddresses.length) {
+        const allocated = await client.send(new AllocateAddressCommand({
+
+        }));
+        await SetResourceName(client, allocated.AllocationId, constants.names.run.elastic_ip);
+    }
 }
 
 module.exports = Initialize;

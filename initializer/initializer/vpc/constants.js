@@ -14,6 +14,8 @@ const config = {
             securityGroup: '',
             vpc: '',
             routeTable: '',
+            endpoint_s3: '',
+            elastic_ip: '',
         },
     },
     ports: {

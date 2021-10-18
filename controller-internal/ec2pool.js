@@ -1,5 +1,12 @@
 const {
-    EC2Client, RequestSpotInstancesCommand, DescribeSpotPriceHistoryCommand, CreateTagsCommand, TerminateInstancesCommand, DescribeSpotInstanceRequestsCommand,
+    EC2Client,
+    RequestSpotInstancesCommand,
+    DescribeSpotPriceHistoryCommand,
+    CreateTagsCommand,
+    TerminateInstancesCommand,
+    DescribeSpotInstanceRequestsCommand,
+    DescribeSecurityGroupsCommand,
+    DescribeSubnetsCommand,
 } = require('@aws-sdk/client-ec2');
 const {
     ImagebuilderClient, ListImageBuildVersionsCommand, ListImagesCommand,
@@ -95,6 +102,7 @@ class EC2Pool {
     }
 
     async runInstance(instanceMetadata) {
+        // TODO remove copy-pasted code in /initializer/runner/index.js
         const imagebuilderClient = new ImagebuilderClient({});
         const latestImageVersionArn = await imagebuilderClient.send(new ListImagesCommand({
             filters: [
@@ -111,6 +119,19 @@ class EC2Pool {
 
         const imageId = latestImageBuild.outputResources.amis[0].image;
         const ec2Client = new EC2Client({});
+
+        const securityGroup = await ec2Client.send(new DescribeSecurityGroupsCommand({
+            Filters: [
+                { Name: 'tag:Name', Values: [config.constants.vpc.names.run.securityGroup] },
+            ],
+
+        })).then((x) => x.SecurityGroups[0]);
+
+        const subnet = await ec2Client.send(new DescribeSubnetsCommand({
+            Filters: [
+                { Name: 'tag:Name', Values: [config.constants.vpc.names.run.subnet] },
+            ],
+        })).then((x) => x.Subnets[0]);
 
         const today = new Date();
         const yesterday = new Date();
@@ -135,6 +156,8 @@ class EC2Pool {
             InstanceCount: Math.ceil((this.requestedCount - this.actualCount) / instanceMetadata.dockerInstancesCount),
             Type: 'one-time',
             LaunchSpecification: {
+                SecurityGroupIds: [securityGroup.GroupId],
+                SubnetId: subnet.SubnetId,
                 ImageId: imageId,
                 UserData: this.patchUserData(readFileSync(join(__dirname, 'startupScripts/ubuntu.sh')).toString(), instanceMetadata),
                 IamInstanceProfile: {

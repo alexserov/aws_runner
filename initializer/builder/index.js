@@ -21,6 +21,7 @@ module.exports = async function rebuild(config, logCallback) {
 
     const cloudWatchClient = new CloudWatchLogsClient({});
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
         const buildVersionInfos = await Promise
             .all(buildVersions.map((x) => client.send(new GetImageCommand({

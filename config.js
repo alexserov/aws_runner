@@ -60,6 +60,7 @@ module.exports = {
                     vpc: 'devextreme-ga-vpc-run',
                     routeTable: 'devextreme-ga-routeTable-run',
                     endpoint_s3: 'devextreme-ga-routeTable-run-ep-s3',
+                    elastic_ip: 'devextreme-ga-elastic-ip',
                 },
             },
             ports: {
