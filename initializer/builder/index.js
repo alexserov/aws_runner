@@ -27,7 +27,7 @@ module.exports = async function rebuild(config, logCallback) {
                 imageBuildVersionArn: x,
             }))))
             .then((x) => x.map((z) => z.image));
-        if (!buildVersionInfos.filter((x) => !x.outputResources.amis.length).length) {
+        if (!buildVersionInfos.filter((x) => !x.outputResources?.amis?.length).length) {
             break;
         }
         await new Promise((resolve) => setTimeout(resolve, 10000));
