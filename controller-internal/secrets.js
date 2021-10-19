@@ -1,5 +1,6 @@
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 const axios = require('axios');
+const config = require('../config');
 
 class Secrets {
     constructor(repository, secretArn) {
@@ -12,7 +13,7 @@ class Secrets {
     }
 
     async getGithubToken() {
-        const client = new SecretsManagerClient({});
+        const client = new SecretsManagerClient({ region: config.region });
         const secretString = await client.send(new GetSecretValueCommand({
             SecretId: this.secretArn,
         })).then((x) => x.SecretString);
