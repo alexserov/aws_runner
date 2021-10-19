@@ -4,7 +4,14 @@ const {
     ListImageBuildVersionsCommand,
 } = require('@aws-sdk/client-imagebuilder');
 const {
-    EC2Client, RunInstancesCommand, DescribeSecurityGroupsCommand, DescribeSubnetsCommand, DescribeAddressesCommand, AssociateAddressCommand, DescribeInstancesCommand,
+    EC2Client,
+    RunInstancesCommand,
+    DescribeSecurityGroupsCommand,
+    DescribeSubnetsCommand,
+    DescribeAddressesCommand,
+    AssociateAddressCommand,
+    DescribeInstancesCommand,
+    AssociateIamInstanceProfileCommand,
 } = require('@aws-sdk/client-ec2');
 const { readFileSync } = require('fs');
 const { join } = require('path');
@@ -27,6 +34,7 @@ async function run(config, logCallback) {
 
     const imageId = latestImageBuild.outputResources.amis[0].image;
     logCallback(`\t Image: ${imageId}`);
+
     const ec2Client = new EC2Client({});
 
     const securityGroup = await ec2Client.send(new DescribeSecurityGroupsCommand({
@@ -35,13 +43,14 @@ async function run(config, logCallback) {
         ],
 
     })).then((x) => x.SecurityGroups[0]);
-
     logCallback(`\t Security group: ${securityGroup.GroupName} (${securityGroup.GroupId})`);
+
     const subnet = await ec2Client.send(new DescribeSubnetsCommand({
         Filters: [
             { Name: 'tag:Name', Values: [config.constants.vpc.names.run.subnet] },
         ],
     })).then((x) => x.Subnets[0]);
+    logCallback(`\t Subnet: ${subnet.SubnetArn}`);
 
     let instance = await ec2Client.send(new RunInstancesCommand({
         MinCount: 1,
@@ -82,6 +91,13 @@ async function run(config, logCallback) {
         InstanceId: instance.InstanceId,
     }));
     logCallback(`\t Instance IP: ${allocatedAddress.PublicIp}`);
+
+    await ec2Client.send(new AssociateIamInstanceProfileCommand({
+        InstanceId: instance.InstanceId,
+        IamInstanceProfile: {
+            Name: config.constants.iam.names.controller.profile,
+        },
+    }));
 }
 
 module.exports = run;
