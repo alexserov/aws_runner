@@ -9,7 +9,7 @@ async function main() {
     await buildDocker();
     await initialize(config, logCallback);
     await rebuild(config, logCallback);
-    await startListener();
+    await startListener(logCallback);
 }
 
 function prepareConfig() {
