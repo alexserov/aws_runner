@@ -1,6 +1,7 @@
 const {
     EC2Client,
     RequestSpotInstancesCommand,
+    AssociateIamInstanceProfileCommand,
     DescribeSpotPriceHistoryCommand,
     CreateTagsCommand,
     TerminateInstancesCommand,
@@ -81,7 +82,7 @@ class EC2Pool {
     async terminateInstance() {
         const lastInstance = this.instanceStack.pop();
         if (!lastInstance) { return; }
-        const ec2Client = new EC2Client({});
+        const ec2Client = new EC2Client({ region: config.region });
 
         await ec2Client.send(new TerminateInstancesCommand({
             InstanceIds: [lastInstance],
@@ -109,7 +110,7 @@ class EC2Pool {
 
     async runInstance(instanceMetadata) {
         // TODO remove copy-pasted code in /initializer/runner/index.js
-        const imagebuilderClient = new ImagebuilderClient({});
+        const imagebuilderClient = new ImagebuilderClient({ region: config.region });
         const latestImageVersionArn = await imagebuilderClient.send(new ListImagesCommand({
             filters: [
                 { name: 'name', values: [config.constants.imagebuilder.names.host.imageRecipe] },
@@ -124,7 +125,7 @@ class EC2Pool {
             .then((x) => x[0]);
 
         const imageId = latestImageBuild.outputResources.amis[0].image;
-        const ec2Client = new EC2Client({});
+        const ec2Client = new EC2Client({ region: config.region });
 
         const securityGroup = await ec2Client.send(new DescribeSecurityGroupsCommand({
             Filters: [
@@ -206,6 +207,12 @@ class EC2Pool {
                     { Key: 'Name', Value: `${config.constants.ec2.names.instancePrefix}-${this.lastInstanceId + index}` },
                     { Key: config.constants.global.tagName, Value: config.constants.global.tagValue },
                 ],
+            }));
+            await ec2Client.send(new AssociateIamInstanceProfileCommand({
+                InstanceId: instance,
+                IamInstanceProfile: {
+                    Name: config.constants.iam.names.dockerHost.profile,
+                },
             }));
         }));
         this.lastInstanceId += requestInfos.length;
