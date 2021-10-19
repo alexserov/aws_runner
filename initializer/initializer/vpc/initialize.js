@@ -145,6 +145,12 @@ async function Initialize(logCallback) {
                     { CidrIp: '0.0.0.0/0' },
                 ],
             },
+            {
+                IpProtocol: '-1',
+                UserIdGroupPairs: [
+                    { GroupId: run.securityGroupId, VpcId: run.vpcId },
+                ],
+            },
         ],
     }));
 

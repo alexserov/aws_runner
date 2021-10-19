@@ -43,7 +43,7 @@ class Secrets {
                 };
             }
         }
-        return currentToken.value;
+        return currentToken;
     }
 
     async getRegistrationToken() {

@@ -1,8 +1,10 @@
 const {
     IAMClient, CreateRoleCommand, PutRolePolicyCommand, CreateInstanceProfileCommand, AddRoleToInstanceProfileCommand,
 } = require('@aws-sdk/client-iam');
+const {
+    SecretsManagerClient, GetSecretValueCommand,
+} = require('@aws-sdk/client-secrets-manager');
 
-const { STSClient, GetCallerIdentityCommand } = require('@aws-sdk/client-sts');
 const { readdirSync, readFileSync } = require('fs');
 const { join, basename } = require('path');
 const globalConstants = require('../global');
@@ -57,14 +59,16 @@ async function Initialize(logCallback) {
     logCallback('IAM Initialization');
 
     const client = new IAMClient();
-    const stsClient = new STSClient();
+    const smClient = new SecretsManagerClient();
 
-    const accountId = await stsClient.send(new GetCallerIdentityCommand()).then((x) => x.Account);
+    const secret = await smClient.send(new GetSecretValueCommand({
+        SecretId: constants.secretId,
+    }));
 
     await InitializeRole(client, constants.names.imagebuilder, 'imagebuilder', null, logCallback);
     await InitializeRole(client, constants.names.dockerHost, 'docker-host', null, logCallback);
     await InitializeRole(client, constants.names.controller, 'controller', {
-        AWS_SECRETMANAGER_RESOURCE_NAME: `arn:aws:secretsmanager:${globalConstants.region}:${accountId}:${constants.secretId}`,
+        AWS_SECRETMANAGER_RESOURCE_NAME: secret.ARN,
     }, logCallback);
 }
 

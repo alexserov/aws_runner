@@ -3,18 +3,16 @@ const { exec } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 const { promisify } = require('util');
 const axios = require('axios');
+const config = require('../config');
 
-const {
-    REPO_FULLNAME, WORKERS_COUNT,
-    WORKERS_LABEL, DOCKER_IMAGE,
-} = require('./env');
+const DOCKER_IMAGE = `${process.env.AWS_ACCOUNT_ID}.dkr.ecr.${process.env.AWS_REGION}.amazonaws.com/${process.env.DOCKER_REPO_NAME}:runner`;
 
 let destroy = false;
 const containers = [];
 
 function getTokenImpl(endpointPart) {
     axios({
-        url: `${process.env.CONTROLLER_ADDRESS}/${endpointPart}`,
+        url: `http://${process.env.CONTROLLER_ADDRESS}:${config.constants.vpc.ports.controllerPrivate}/${endpointPart}`,
         method: 'GET',
     }).then((x) => x.data);
 }
@@ -29,14 +27,15 @@ function getRemoveToken() {
 async function startWorker() {
     while (!destroy) {
         const name = uuidv4().substr(0, 8);
+        // eslint-disable-next-line no-await-in-loop
+        const token = await getRegistrationToken();
         containers.push(name);
         const data = {
-            url: `https://github.com/${REPO_FULLNAME}`,
-            // eslint-disable-next-line no-await-in-loop
-            token: await getRegistrationToken(),
-            type: WORKERS_LABEL,
-            name: `${WORKERS_LABEL}-${name}`,
-            count: WORKERS_COUNT,
+            url: `https://github.com/${process.env.REPO_FULLNAME}`,
+            token,
+            type: process.env.WORKERS_LABEL,
+            name: `${process.env.WORKERS_LABEL}-${name}`,
+            count: +process.env.WORKERS_COUNT,
             port: 35123,
         };
         const base64String = Buffer.from(JSON.stringify(data)).toString('base64');
@@ -50,7 +49,7 @@ async function startWorker() {
 }
 
 async function startWorkers() {
-    await Promise.all([...Array(+WORKERS_COUNT).keys()].map(startWorker));
+    await Promise.all([...new Array(+process.env.WORKERS_COUNT).keys()].map(startWorker));
 }
 
 const stopAndDestroy = async (containerName) => {
