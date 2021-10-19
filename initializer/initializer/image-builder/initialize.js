@@ -185,7 +185,7 @@ async function Initialize(logCallback) {
             { componentArn: 'arn:aws:imagebuilder:eu-central-1:aws:component/nodejs-12-lts-linux/1.0.1/1' },
         ],
     }, logCallback);
-    await PrepareConfigs(iamConstants.names.dockerHost.role, 'controller', logCallback);
+    await PrepareConfigs(iamConstants.names.controller.role, 'controller', logCallback);
 }
 
 module.exports = Initialize;

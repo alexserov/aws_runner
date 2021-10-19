@@ -27,7 +27,7 @@ phases:
             - aws s3 cp s3://devextreme-ga-configs/controller/config.js /home/ubuntu/config.js
             - aws s3 cp s3://devextreme-ga-configs/controller/controller-internal /home/ubuntu/controller-internal --recursive
             - cd /home/ubuntu/controller-internal && npm ci
-            - aws s3 cp s3://devextreme-ga-configs/controller/controller-internal /home/ubuntu/controller-public --recursive
+            - aws s3 cp s3://devextreme-ga-configs/controller/controller-public /home/ubuntu/controller-public --recursive
             - cd /home/ubuntu/controller-public && npm ci
       - name: SetAwsFolderOwner
         action: SetFolderOwner

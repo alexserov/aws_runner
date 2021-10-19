@@ -110,12 +110,12 @@ class EC2Pool {
                 { name: 'name', values: [config.constants.imagebuilder.names.host.imageRecipe] },
             ],
         }))
-            .then((x) => x.imageVersionList.sort((a, b) => new Date(a.dateCreated).valueOf() - new Date(b.dateCreated).valueOf()))
+            .then((x) => x.imageVersionList.sort((a, b) => new Date(b.dateCreated).valueOf() - new Date(a.dateCreated).valueOf()))
             .then((x) => x[0].arn);
         const latestImageBuild = await imagebuilderClient.send(new ListImageBuildVersionsCommand({
             imageVersionArn: latestImageVersionArn,
         }))
-            .then((x) => x.imageSummaryList.sort((a, b) => new Date(a.dateCreated).valueOf() - new Date(b.dateCreated).valueOf()))
+            .then((x) => x.imageSummaryList.sort((a, b) => new Date(b.dateCreated).valueOf() - new Date(a.dateCreated).valueOf()))
             .then((x) => x[0]);
 
         const imageId = latestImageBuild.outputResources.amis[0].image;
