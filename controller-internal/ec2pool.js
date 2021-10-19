@@ -7,6 +7,7 @@ const {
     DescribeSpotInstanceRequestsCommand,
     DescribeSecurityGroupsCommand,
     DescribeSubnetsCommand,
+    CancelSpotInstanceRequestsCommand,
 } = require('@aws-sdk/client-ec2');
 const {
     ImagebuilderClient, ListImageBuildVersionsCommand, ListImagesCommand,
@@ -68,8 +69,12 @@ class EC2Pool {
                 break;
             }
             const instancesToTerminate = Math.floor((this.actualCount - this.requestedCount) / this.dockerInstancesCount);
-            // eslint-disable-next-line no-await-in-loop
-            await Promise.all(new Array(instancesToTerminate).map(this.terminateInstance()));
+            if (instancesToTerminate) {
+                // eslint-disable-next-line no-await-in-loop
+                await Promise.all(new Array(instancesToTerminate).map(this.terminateInstance()));
+            } else {
+                return;
+            }
         }
     }
 
@@ -160,7 +165,7 @@ class EC2Pool {
                 SecurityGroupIds: [securityGroup.GroupId],
                 SubnetId: subnet.SubnetId,
                 ImageId: imageId,
-                UserData: this.patchUserData(readFileSync(join(__dirname, 'startupScripts/ubuntu.sh')).toString(), instanceMetadata),
+                UserData: this.patchUserData(readFileSync(join(__dirname, 'docker-host.sh')).toString(), instanceMetadata),
                 IamInstanceProfile: {
                     Name: config.constants.iam.names.dockerHost.profile,
                 },
@@ -186,7 +191,12 @@ class EC2Pool {
                 })))
                 .then((x) => x.SpotInstanceRequests);
             requestInfos = requestInfos.filter((x) => x.Status.Code !== 'capacity-not-available');
+
+            const unavailableRequestInfos = requestInfos.filter((x) => x.Status.Code === 'capacity-not-available');
             // eslint-disable-next-line no-await-in-loop
+            await ec2Client.send(new CancelSpotInstanceRequestsCommand({
+                SpotInstanceRequestIds: unavailableRequestInfos.map((x) => x.SpotInstanceRequestId),
+            }));
         }
         if (!requestInfos.length) { return 0; }
         await Promise.all(requestInfos.map((x) => x.InstanceId).map(async (instance, index) => {

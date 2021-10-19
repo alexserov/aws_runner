@@ -6,6 +6,7 @@ const publicPort = config.constants.vpc.ports.controllerPublic;
 const internalPort = config.constants.vpc.ports.controllerPrivate;
 const app = new Express();
 
+app.use(Express.json());
 app.post('/', async (req, res) => {
     const header = req.headers['x-github-event'];
     let status = 403;
@@ -28,7 +29,7 @@ async function handleWorkflowJob(request) {
     } = request.body;
 
     const response = await axios.post(
-        `127.0.0.1:${internalPort}/job_${status}`,
+        `http://127.0.0.1:${internalPort}/job_${status}`,
         JSON.stringify({ id, labels }),
         {
             headers: {
