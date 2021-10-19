@@ -5,7 +5,17 @@
       "Sid": "Stmt1634127524406",
       "Action": [
         "ec2:StartInstances",
-        "ec2:StopInstances"
+        "ec2:StopInstances",
+        "ec2:AssociateIamInstanceProfile",
+        "ec2:CancelSpotInstanceRequests",
+        "ec2:CreateTags",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSpotInstanceRequests",
+        "ec2:DescribeSpotPriceHistory",
+        "ec2:DescribeSubnets",
+        "ec2:RequestSpotInstances",
+        "ec2:TerminateInstances",
+        "ec2:DescribeInstances"
       ],
       "Effect": "Allow",
       "Resource": "*"

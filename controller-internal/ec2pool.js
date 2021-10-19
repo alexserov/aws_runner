@@ -8,6 +8,7 @@ const {
     DescribeSpotInstanceRequestsCommand,
     DescribeSecurityGroupsCommand,
     DescribeSubnetsCommand,
+    DescribeInstancesCommand,
     CancelSpotInstanceRequestsCommand,
 } = require('@aws-sdk/client-ec2');
 const {
@@ -191,25 +192,40 @@ class EC2Pool {
                     SpotInstanceRequestIds: ids,
                 })))
                 .then((x) => x.SpotInstanceRequests);
+            const unavailableRequestInfos = requestInfos.filter((x) => x.Status.Code === 'capacity-not-available');
+
             requestInfos = requestInfos.filter((x) => x.Status.Code !== 'capacity-not-available');
 
-            const unavailableRequestInfos = requestInfos.filter((x) => x.Status.Code === 'capacity-not-available');
-            // eslint-disable-next-line no-await-in-loop
-            await ec2Client.send(new CancelSpotInstanceRequestsCommand({
-                SpotInstanceRequestIds: unavailableRequestInfos.map((x) => x.SpotInstanceRequestId),
-            }));
+            if (unavailableRequestInfos.length) {
+                // eslint-disable-next-line no-await-in-loop
+                await ec2Client.send(new CancelSpotInstanceRequestsCommand({
+                    SpotInstanceRequestIds: unavailableRequestInfos.map((x) => x.SpotInstanceRequestId),
+                }));
+            }
         }
         if (!requestInfos.length) { return 0; }
-        await Promise.all(requestInfos.map((x) => x.InstanceId).map(async (instance, index) => {
+        await Promise.all(requestInfos.map(async (instance, index) => {
+            let instanceState = instance;
             await ec2Client.send(new CreateTagsCommand({
-                Resources: [instance],
+                Resources: [instanceState.InstanceId],
                 Tags: [
                     { Key: 'Name', Value: `${config.constants.ec2.names.instancePrefix}-${this.lastInstanceId + index}` },
                     { Key: config.constants.global.tagName, Value: config.constants.global.tagValue },
                 ],
             }));
+            // eslint-disable-next-line no-bitwise
+            while ((instanceState.State.Code & 16) !== 16) {
+                // code 16 is 'running'
+
+                // eslint-disable-next-line no-await-in-loop
+                await new Promise((resolve) => setTimeout(resolve, 2 * 1000));
+                // eslint-disable-next-line no-await-in-loop
+                instanceState = await ec2Client.send(new DescribeInstancesCommand({
+                    InstanceIds: [instanceState.InstanceId],
+                })).then((x) => x.Reservations[0].Instances[0]);
+            }
             await ec2Client.send(new AssociateIamInstanceProfileCommand({
-                InstanceId: instance,
+                InstanceId: instanceState.InstanceId,
                 IamInstanceProfile: {
                     Name: config.constants.iam.names.dockerHost.profile,
                 },
