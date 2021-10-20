@@ -16,6 +16,7 @@ const {
 } = require('@aws-sdk/client-imagebuilder');
 const { readFileSync } = require('fs');
 const { join } = require('path');
+const axios = require('axios');
 const config = require('../config');
 
 class EC2Pool {
@@ -91,7 +92,8 @@ class EC2Pool {
     }
 
     // eslint-disable-next-line class-methods-use-this
-    patchUserData(data, instanceMetadata) {
+    async patchUserData(data, instanceMetadata) {
+        const controllerAddress = await axios('http://169.254.169.254/latest/meta-data/local-ipv4').then((x) => x.data);
         const replacements = {
             REPO_FULLNAME_PLACEHOLDER: config.repository.name,
             WORKERS_COUNT_PLACEHOLDER: instanceMetadata.dockerInstancesCount,
@@ -99,10 +101,10 @@ class EC2Pool {
             AWS_ACCOUNT_ID_PLACEHOLDER: process.env.EC2_ACCOUNT,
             AWS_REGION_PLACEHOLDER: process.env.EC2_REGION,
             DOCKER_REPO_NAME_PLACEHOLDER: config.constants.ecr.names.repository,
-            CONTROLLER_ADDRESS_PLACEHOLDER: process.env.CONTROLLER_ADDRESS,
+            CONTROLLER_ADDRESS_PLACEHOLDER: controllerAddress,
         };
         let result = data;
-        Object.keys(data).forEach((x) => {
+        Object.keys(replacements).forEach((x) => {
             result = result.replace(x, replacements[x]);
         });
 
@@ -167,7 +169,7 @@ class EC2Pool {
                 SecurityGroupIds: [securityGroup.GroupId],
                 SubnetId: subnet.SubnetId,
                 ImageId: imageId,
-                UserData: this.patchUserData(readFileSync(join(__dirname, 'docker-host.sh')).toString(), instanceMetadata),
+                UserData: await this.patchUserData(readFileSync(join(__dirname, 'docker-host.sh')).toString(), instanceMetadata),
                 IamInstanceProfile: {
                     Name: config.constants.iam.names.dockerHost.profile,
                 },

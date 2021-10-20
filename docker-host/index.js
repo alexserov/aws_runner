@@ -11,7 +11,7 @@ let destroy = false;
 const containers = [];
 
 function getTokenImpl(endpointPart) {
-    axios({
+    return axios({
         url: `http://${process.env.CONTROLLER_ADDRESS}:${config.constants.vpc.ports.controllerPrivate}/${endpointPart}`,
         method: 'GET',
     }).then((x) => x.data);
